@@ -1,8 +1,21 @@
 # quarkus-tigris
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This project uses Quarkus, the Supersonic Subatomic Java Framework, to create a backend service that handles file uploads to Amazon S3. It also includes an Angular frontend for user interaction.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Technologies Used
+
+*   **Quarkus**: A full-stack, Kubernetes-native Java framework tailored for GraalVM and OpenJDK HotSpot, crafted from the best of breed Java libraries and standards.
+*   **Angular**: A platform for building mobile and desktop web applications.
+*   **Quinoa**: A Quarkus extension that simplifies the integration of a web UI, like one built with Angular, into a Quarkus application.
+*   **Amazon S3**: A scalable object storage service used to store the uploaded MP3 files.
+
+## Project Structure
+
+The project is organized as follows:
+
+-   `src/main/java`: Contains the Java source code for the Quarkus backend.
+-   `src/main/resources`: Contains the configuration files for the Quarkus application, such as `application.properties`.
+-   `src/main/webui`: Contains the Angular frontend application.
 
 ## Running the application in dev mode
 
@@ -12,7 +25,9 @@ You can run your application in dev mode that enables live coding using:
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+This command will start both the Quarkus backend and the Angular frontend in development mode. The frontend will be accessible at `http://localhost:8080`.
+
+> **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
 
 ## Packaging and running the application
 
@@ -55,10 +70,10 @@ If you want to learn more about building native executables, please consult <htt
 
 ## Related Guides
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Reactive Messaging Nats Jetstream ([guide](https://docs.quarkiverse.io/quarkus-reactive-messaging-nats-jetstream/dev/)): Easily integrate to nats.io JetStream.
-- Amazon S3 ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html)): Connect to Amazon S3 cloud storage
+- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x.
+- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST.
+- Amazon S3 ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html)): Connect to Amazon S3 cloud storage.
+- Quinoa ([guide](https://docs.quarkiverse.io/quarkus-quinoa/dev/index.html)): A Quarkus extension to manage and serve modern web UI.
 
 ## Provided Code
 
