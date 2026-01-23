@@ -25,7 +25,27 @@ You can run your application in dev mode that enables live coding using:
 ./mvnw quarkus:dev
 ```
 
-This command will start both the Quarkus backend and the Angular frontend in development mode. The frontend will be accessible at `http://localhost:8080`.
+This command will start both the Quarkus backend and the Angular frontend in development mode. 
+
+**Important**: Access the application at `http://localhost:8080` (not port 4200). 
+
+### URL Structure
+
+Quinoa automatically routes requests based on the URL path:
+
+- **Frontend Routes** (Angular SPA):
+  - `http://localhost:8080/` → Angular app (redirects to `/passphrase`)
+  - `http://localhost:8080/passphrase` → Passphrase page
+  - `http://localhost:8080/upload` → Upload page
+
+- **Backend API Routes** (Quarkus REST):
+  - `http://localhost:8080/api/validate-passphrase` → Passphrase validation endpoint
+  - `http://localhost:8080/api/upload` → File upload endpoint
+
+Quinoa intelligently proxies the Angular dev server through Quarkus, so:
+- Any path starting with `/api` is handled by your Quarkus backend
+- All other paths are served by the Angular application
+- No additional proxy configuration is needed!
 
 > **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
 
@@ -70,10 +90,10 @@ If you want to learn more about building native executables, please consult <htt
 
 ## Related Guides
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x.
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST.
-- Amazon S3 ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html)): Connect to Amazon S3 cloud storage.
-- Quinoa ([guide](https://docs.quarkiverse.io/quarkus-quinoa/dev/index.html)): A Quarkus extension to manage and serve modern web UI.
+- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
+- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
+- Reactive Messaging Nats Jetstream ([guide](https://docs.quarkiverse.io/quarkus-reactive-messaging-nats-jetstream/dev/)): Easily integrate to nats.io JetStream.
+- Amazon S3 ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html)): Connect to Amazon S3 cloud storage
 
 ## Provided Code
 

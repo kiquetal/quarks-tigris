@@ -1,1 +1,3 @@
-<router-outlet></router-outlet>
+<app-passphrase *ngIf="!isPassphraseValidated" (passphraseValidated)="onPassphraseValidated()"></app-passphrase>
+<app-mp3-upload *ngIf="isPassphraseValidated"></app-mp3-upload>
+

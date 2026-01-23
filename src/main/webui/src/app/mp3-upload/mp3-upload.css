@@ -9,6 +9,20 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+h1 {
+  font-size: 32px;
+  margin-bottom: 30px;
+  color: #e0e0e0;
+  text-align: center;
+}
+
 input[type="email"],
 input[type="file"] {
   width: 300px;
@@ -20,6 +34,27 @@ input[type="file"] {
   box-sizing: border-box;
   background-color: #16213e;
   color: #e0e0e0;
+  font-size: 16px;
+}
+
+input[type="email"]:focus,
+input[type="file"]:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+input[type="file"]::file-selector-button {
+  background-color: #0f3460;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #16213e;
 }
 
 button {
@@ -32,13 +67,19 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
+  transition: background-color 0.3s ease;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background-color: #16213e;
 }
 
-p {
-    font-size: 24px;
-    margin-bottom: 20px;
+button:active:not(:disabled) {
+  background-color: #0a2540;
+}
+
+button:disabled {
+  background-color: #16213e;
+  opacity: 0.5;
+  cursor: not-allowed;
 }

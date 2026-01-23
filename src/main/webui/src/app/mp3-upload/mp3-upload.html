@@ -1,4 +1,6 @@
-<p>mp3-upload works!</p>
-<input type="email" [(ngModel)]="email" placeholder="Enter your email" />
-<input type="file" (change)="onFileSelected($event)" />
-<button (click)="onUpload()">Upload</button>
+<div class="container">
+  <h1>Upload MP3 File</h1>
+  <input type="email" [(ngModel)]="email" placeholder="Enter your email" />
+  <input type="file" (change)="onFileSelected($event)" accept=".mp3,audio/mpeg" />
+  <button (click)="onUpload()" [disabled]="!selectedFile || !email">Upload</button>
+</div>

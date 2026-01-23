@@ -11,7 +11,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import jakarta.inject.Inject;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.jboss.resteasy.reactive.RestForm;
 import java.util.UUID;
 
 @Path("/api")
@@ -23,9 +22,9 @@ public class FileUploadResource {
     @POST
     @Path("/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadFile(@RestForm("file") FileUpload file, @RestForm("email") String email) {
+    public Response uploadFile(FileUpload file) {
         String bucketName = "your-bucket-name";
-        String key = "uploads/" + email + "/" + UUID.randomUUID() + "-" + file.fileName();
+        String key = "uploads/" + UUID.randomUUID() + "-" + file.fileName();
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)

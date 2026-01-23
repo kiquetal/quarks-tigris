@@ -1,8 +1,6 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-passphrase',
@@ -14,15 +12,14 @@ export class Passphrase {
   passphrase = '';
   @Output() passphraseValidated = new EventEmitter<void>();
 
-  constructor(private http: HttpClient, private router: Router, private authService: AuthService) {}
+  constructor(private http: HttpClient) {}
 
   validatePassphrase() {
     this.http
       .post('/api/validate-passphrase', { passphrase: this.passphrase })
       .subscribe((res: any) => {
         if (res.validated) {
-          this.authService.login();
-          this.router.navigate(['/upload']);
+          this.passphraseValidated.emit();
         } else {
           alert('Invalid passphrase');
         }
