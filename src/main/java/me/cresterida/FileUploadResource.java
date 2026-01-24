@@ -19,7 +19,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import java.util.UUID;
 
-@Path("/api")
+@Path("/")
 @Tag(name = "Whisper API", description = "MP3 file upload and authentication endpoints")
 public class FileUploadResource {
 
