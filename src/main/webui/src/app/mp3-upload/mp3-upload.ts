@@ -59,9 +59,7 @@ export class Mp3Upload {
         this.apiService.uploadFile(encryptedFile, this.email).subscribe({
           next: (res) => {
             console.log('Upload successful:', res);
-            const verificationStatus = res.verified ? '✓ Verified' : '⚠ Not Verified';
-            const sizeInfo = res.originalSize > 0 ? ` (Original size: ${(res.originalSize / (1024 * 1024)).toFixed(2)} MB)` : '';
-            alert(`File uploaded successfully!\n${verificationStatus}${sizeInfo}\nKey: ${res.key}`);
+            alert('File uploaded successfully!');
           },
           error: (err: HttpErrorResponse) => {
             console.error('Upload failed:', err);

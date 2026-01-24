@@ -131,15 +131,15 @@ public class FileUploadResource {
                         System.out.println("Created envelope metadata JSON:");
                         System.out.println(metadataJson);
 
-                        // Upload KEK-encrypted data to S3 (streaming)
+                        // Upload DEK-encrypted data to S3 (streaming)
                         PutObjectRequest dataRequest = PutObjectRequest.builder()
                                 .bucket(bucketName)
                                 .key(dataKey)
                                 .contentType("application/octet-stream")
-                                .contentLength(envelopeResult.encryptedSize)
+                                .contentLength(dekResult.encryptedSize)
                                 .build();
                         s3.putObject(dataRequest, RequestBody.fromFile(tempEncrypted));
-                        System.out.println("✓ KEK-encrypted data uploaded to S3: " + dataKey);
+                        System.out.println("✓ DEK-encrypted data uploaded to S3: " + dataKey);
 
                         // Upload metadata JSON to S3
                         PutObjectRequest metadataRequest = PutObjectRequest.builder()
