@@ -17,10 +17,22 @@ export class Mp3Upload {
 
   onFileSelected(event: any) {
     this.selectedFile = event.target.files[0];
+    if (this.selectedFile) {
+      console.log('File selected:', {
+        name: this.selectedFile.name,
+        size: this.selectedFile.size,
+        sizeInMB: (this.selectedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
+        type: this.selectedFile.type
+      });
+    }
   }
 
   onUpload() {
     if (this.selectedFile) {
+      console.log('Starting upload...');
+      console.log('File:', this.selectedFile.name, 'Size:', this.selectedFile.size, 'bytes');
+      console.log('Email:', this.email);
+
       this.apiService.uploadFile(this.selectedFile, this.email).subscribe({
         next: (res) => {
           console.log('Upload successful:', res);
@@ -28,6 +40,9 @@ export class Mp3Upload {
         },
         error: (err: HttpErrorResponse) => {
           console.error('Upload failed:', err);
+          console.log('Error status:', err.status);
+          console.log('Error status text:', err.statusText);
+          console.log('Error body:', err.error);
 
           if (err.status === 403) {
             // 403 Forbidden - unauthorized
@@ -49,6 +64,8 @@ export class Mp3Upload {
           }
         },
       });
+    } else {
+      console.warn('No file selected or email missing');
     }
   }
 }

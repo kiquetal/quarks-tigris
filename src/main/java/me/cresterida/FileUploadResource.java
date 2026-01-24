@@ -33,18 +33,51 @@ public class FileUploadResource {
     @Operation(summary = "Upload MP3 file", description = "Upload an MP3 file to S3 storage with associated email")
     @APIResponse(responseCode = "200", description = "File uploaded successfully")
     @APIResponse(responseCode = "400", description = "Invalid file or missing email")
+    @APIResponse(responseCode = "413", description = "File too large")
     public Response uploadFile(@RestForm("file") FileUpload file, @RestForm("email") String email) {
+        // Validate inputs
+        if (file == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("No file provided"))
+                    .build();
+        }
+
+        if (email == null || email.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("Email is required"))
+                    .build();
+        }
+
+        // Check file size (50MB limit)
+        long maxFileSize = 50 * 1024 * 1024; // 50MB in bytes
+        if (file.size() > maxFileSize) {
+            return Response.status(413)
+                    .entity(new ErrorResponse("File is too large. Maximum size is 50MB."))
+                    .build();
+        }
+
+        // Log file info
+        System.out.println("Uploading file: " + file.fileName() + " (" + file.size() + " bytes) for email: " + email);
+
         String bucketName = "your-bucket-name";
         String key = "uploads/" + email + "/" + UUID.randomUUID() + "-" + file.fileName();
 
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build();
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
 
-        s3.putObject(putObjectRequest, RequestBody.fromFile(file.uploadedFile()));
+            s3.putObject(putObjectRequest, RequestBody.fromFile(file.uploadedFile()));
 
-        return Response.ok(new UploadResponse("File uploaded successfully", key)).build();
+            return Response.ok(new UploadResponse("File uploaded successfully", key)).build();
+        } catch (Exception e) {
+            System.err.println("Error uploading file: " + e.getMessage());
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to upload file: " + e.getMessage()))
+                    .build();
+        }
     }
 
     @POST
@@ -88,6 +121,16 @@ public class FileUploadResource {
         public UploadResponse(String message, String key) {
             this.message = message;
             this.key = key;
+        }
+    }
+
+    @Schema(description = "Error response")
+    public static class ErrorResponse {
+        @Schema(description = "Error message")
+        public String message;
+
+        public ErrorResponse(String message) {
+            this.message = message;
         }
     }
 }
