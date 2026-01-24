@@ -51,6 +51,32 @@ Quinoa intelligently proxies the Angular dev server through Quarkus, so:
 - All other paths are served by the Angular application
 - No additional proxy configuration is needed!
 
+## API Configuration
+
+The Angular frontend uses a centralized API service that reads the backend URL from environment configuration files. This allows you to easily change the API endpoint for different environments.
+
+### Changing the Backend URL
+
+To change where the frontend sends API requests:
+
+1. **For Development**: Edit `src/main/webui/src/environments/environment.ts`
+2. **For Production**: Edit `src/main/webui/src/environments/environment.prod.ts`
+
+Update the `apiUrl` property:
+```typescript
+export const environment = {
+  production: false,
+  apiUrl: '/api',  // Change this to your backend URL
+};
+```
+
+**Examples**:
+- Relative URL (default): `'/api'`
+- Full URL for standalone Angular: `'http://localhost:8080/api'`
+- Production: `'https://api.your-domain.com/api'`
+
+For detailed instructions, see [API_CONFIGURATION.md](./API_CONFIGURATION.md).
+
 > **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
 
 ## Packaging and running the application
