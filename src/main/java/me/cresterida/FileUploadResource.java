@@ -10,6 +10,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -25,6 +26,9 @@ public class FileUploadResource {
 
     @Inject
     S3Client s3;
+
+    @ConfigProperty(name = "bucket.name")
+    String bucketName;
 
     @POST
     @Path("/upload")
@@ -59,7 +63,6 @@ public class FileUploadResource {
         // Log file info
         System.out.println("Uploading file: " + file.fileName() + " (" + file.size() + " bytes) for email: " + email);
 
-        String bucketName = "your-bucket-name";
         String key = "uploads/" + email + "/" + UUID.randomUUID() + "-" + file.fileName();
 
         try {
