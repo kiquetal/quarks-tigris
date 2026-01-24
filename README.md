@@ -173,6 +173,37 @@ USE_DEVSERVICES=false ./mvnw quarkus:dev
 
 For detailed Docker Compose instructions, see [DOCKER_COMPOSE.md](./DOCKER_COMPOSE.md).
 
+#### Option 3: Tigris Mode (Cloud Object Storage)
+
+Uses Tigris Object Storage for production-ready S3-compatible cloud storage:
+
+```shell script
+# 1. Configure Tigris credentials (one-time setup)
+chmod +x setup-tigris.sh
+./setup-tigris.sh
+
+# 2. Load Tigris configuration
+source .env.tigris
+
+# 3. Run Quarkus with Tigris backend
+./mvnw quarkus:dev
+```
+
+**Advantages:**
+- ✅ Production-ready cloud storage
+- ✅ Global CDN distribution
+- ✅ Free tier (25 GB storage, 250 GB bandwidth/month)
+- ✅ No egress fees
+- ✅ S3-compatible API
+
+**Tigris Features:**
+- Global edge network for fast access
+- Automatic region routing
+- No per-request charges
+- Built-in redundancy
+
+For detailed Tigris setup instructions, see [TIGRIS_SETUP.md](./TIGRIS_SETUP.md).
+
 ### URL Structure
 
 The application uses `/whisper` as the base path. Quinoa automatically routes requests based on the URL path:
