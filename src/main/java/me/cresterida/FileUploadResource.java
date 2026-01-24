@@ -11,9 +11,16 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import jakarta.inject.Inject;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jboss.resteasy.reactive.RestForm;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import java.util.UUID;
 
 @Path("/api")
+@Tag(name = "Whisper API", description = "MP3 file upload and authentication endpoints")
 public class FileUploadResource {
 
     @Inject
@@ -22,9 +29,13 @@ public class FileUploadResource {
     @POST
     @Path("/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadFile(FileUpload file) {
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Upload MP3 file", description = "Upload an MP3 file to S3 storage with associated email")
+    @APIResponse(responseCode = "200", description = "File uploaded successfully")
+    @APIResponse(responseCode = "400", description = "Invalid file or missing email")
+    public Response uploadFile(@RestForm("file") FileUpload file, @RestForm("email") String email) {
         String bucketName = "your-bucket-name";
-        String key = "uploads/" + UUID.randomUUID() + "-" + file.fileName();
+        String key = "uploads/" + email + "/" + UUID.randomUUID() + "-" + file.fileName();
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -33,13 +44,15 @@ public class FileUploadResource {
 
         s3.putObject(putObjectRequest, RequestBody.fromFile(file.uploadedFile()));
 
-        return Response.ok().build();
+        return Response.ok(new UploadResponse("File uploaded successfully", key)).build();
     }
 
     @POST
     @Path("/validate-passphrase")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Validate passphrase", description = "Validate the user's passphrase to allow access to upload functionality")
+    @APIResponse(responseCode = "200", description = "Passphrase validation result", content = @Content(schema = @Schema(implementation = PassphraseResponse.class)))
     public Response validatePassphrase(PassphraseRequest request) {
         if ("your-secret-passphrase".equals(request.passphrase)) {
             return Response.ok(new PassphraseResponse(true)).build();
@@ -48,15 +61,32 @@ public class FileUploadResource {
         }
     }
 
+    @Schema(description = "Passphrase validation request")
     public static class PassphraseRequest {
+        @Schema(description = "The passphrase to validate", required = true)
         public String passphrase;
     }
 
+    @Schema(description = "Passphrase validation response")
     public static class PassphraseResponse {
+        @Schema(description = "Whether the passphrase is valid")
         public boolean validated;
 
         public PassphraseResponse(boolean validated) {
             this.validated = validated;
+        }
+    }
+
+    @Schema(description = "File upload response")
+    public static class UploadResponse {
+        @Schema(description = "Status message")
+        public String message;
+        @Schema(description = "S3 object key")
+        public String key;
+
+        public UploadResponse(String message, String key) {
+            this.message = message;
+            this.key = key;
         }
     }
 }
