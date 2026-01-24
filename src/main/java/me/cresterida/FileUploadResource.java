@@ -52,11 +52,11 @@ public class FileUploadResource {
                     .build();
         }
 
-        // Check file size (50MB limit)
-        long maxFileSize = 50 * 1024 * 1024; // 50MB in bytes
+        // Check file size (100MB limit)
+        long maxFileSize = 100 * 1024 * 1024; // 100MB in bytes
         if (file.size() > maxFileSize) {
             return Response.status(413)
-                    .entity(new ErrorResponse("File is too large. Maximum size is 50MB."))
+                    .entity(new ErrorResponse("File is too large. Maximum size is 100MB."))
                     .build();
         }
 
