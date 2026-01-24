@@ -83,3 +83,11 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.encrypting-message {
+  color: #2196F3;
+  font-size: 14px;
+  margin-top: 10px;
+  font-weight: 500;
+}
+

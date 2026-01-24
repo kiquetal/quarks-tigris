@@ -26,7 +26,7 @@ export class Passphrase {
       next: (res) => {
         console.log('Success callback received:', res);
         if (res.validated) {
-          this.authService.login();
+          this.authService.login(this.passphrase);
           this.router.navigate(['/upload']);
         } else {
           console.log('Passphrase invalid (success callback)');
