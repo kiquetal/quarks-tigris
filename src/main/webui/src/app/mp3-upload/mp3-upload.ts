@@ -56,10 +56,12 @@ export class Mp3Upload {
         console.log('Encryption complete. Encrypted size:', encryptedFile.size, 'bytes');
 
         // Upload the encrypted file
-        this.apiService.uploadFile(encryptedFile, this.email).subscribe({
+        this.apiService.uploadFile(encryptedFile, this.email, passphrase).subscribe({
           next: (res) => {
             console.log('Upload successful:', res);
-            alert(`File uploaded successfully! URL: ${res.fileUrl}`);
+            const verificationStatus = res.verified ? '✓ Verified' : '⚠ Not Verified';
+            const sizeInfo = res.originalSize > 0 ? ` (Original size: ${(res.originalSize / (1024 * 1024)).toFixed(2)} MB)` : '';
+            alert(`File uploaded successfully!\n${verificationStatus}${sizeInfo}\nKey: ${res.key}`);
           },
           error: (err: HttpErrorResponse) => {
             console.error('Upload failed:', err);

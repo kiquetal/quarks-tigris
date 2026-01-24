@@ -9,7 +9,9 @@ export interface PassphraseResponse {
 
 export interface UploadResponse {
   message: string;
-  fileUrl: string;
+  key: string;
+  verified: boolean;
+  originalSize: number;
 }
 
 @Injectable({
@@ -26,10 +28,11 @@ export class ApiService {
     });
   }
 
-  uploadFile(file: File, email: string): Observable<UploadResponse> {
+  uploadFile(file: File, email: string, passphrase: string): Observable<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('email', email);
+    formData.append('passphrase', passphrase);
     return this.http.post<UploadResponse>(`${this.apiUrl}/upload`, formData);
   }
 }
