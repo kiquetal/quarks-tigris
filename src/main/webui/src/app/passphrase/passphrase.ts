@@ -20,12 +20,31 @@ export class Passphrase {
   ) {}
 
   validatePassphrase() {
-    this.apiService.validatePassphrase(this.passphrase).subscribe((res) => {
-      if (res.validated) {
-        this.authService.login();
-        this.router.navigate(['/upload']);
-      } else {
-        alert('Invalid passphrase');
+    this.apiService.validatePassphrase(this.passphrase).subscribe({
+      next: (res) => {
+        if (res.validated) {
+          this.authService.login();
+          this.router.navigate(['/upload']);
+        } else {
+          alert('Invalid passphrase');
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Error validating passphrase:', err);
+
+        if (err.status === 403) {
+          // 403 Forbidden - invalid passphrase
+          alert('Invalid passphrase');
+        } else if (err.status >= 500) {
+          // 5xx - Server error
+          alert('Server error. Please try again later.');
+        } else if (err.status === 0) {
+          // Network error
+          alert('Cannot connect to server. Please check your connection.');
+        } else {
+          // Other client errors (4xx)
+          alert('Request failed. Please try again.');
+        }
       }
     });
   }

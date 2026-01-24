@@ -57,7 +57,8 @@ public class FileUploadResource {
         if ("your-secret-passphrase".equals(request.passphrase)) {
             return Response.ok(new PassphraseResponse(true)).build();
         } else {
-            return Response.ok(new PassphraseResponse(false)).build();
+            return Response.status(Response.Status.FORBIDDEN).
+                    entity(new PassphraseResponse(false)).build();
         }
     }
 
