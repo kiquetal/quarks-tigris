@@ -2,6 +2,104 @@
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework, to create a backend service that handles file uploads to Amazon S3. It also includes an Angular frontend for user interaction.
 
+## System Architecture
+
+### Current Implementation
+
+```ascii
+┌──────────────────────────────────────────────────────────────────┐
+│                         User's Browser                           │
+└──────────────────────────────────────────────────────────────────┘
+                               │
+                               │ 1. Access Web UI
+                               │    http://localhost:8080/whisper
+                               ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                      Angular Frontend (SPA)                      │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────────┐  │
+│  │   Passphrase   │  │   Auth Guard   │  │   MP3 Upload      │  │
+│  │   Component    │  │   & Service    │  │   Component       │  │
+│  └────────────────┘  └────────────────┘  └───────────────────┘  │
+│         │                                          │              │
+│         │ 2. POST /api/validate-passphrase        │              │
+│         └──────────────────┬───────────────────────┘              │
+│                            │ 3. POST /api/upload (multipart)      │
+└────────────────────────────┼──────────────────────────────────────┘
+                             │
+                             │ Quinoa Integration
+                             │ (Serves Angular + Routes API calls)
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                      Quarkus Backend (REST)                      │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │              FileUploadResource.java                       │  │
+│  │  • POST /api/validate-passphrase (403 on invalid)         │  │
+│  │  • POST /api/upload (50MB limit, multipart)               │  │
+│  │  • Validates: file size, email, file presence             │  │
+│  │  • Returns: 200 (success), 400 (validation), 413 (size)   │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                            │                                      │
+│                            │ 4. Upload File                       │
+│                            │    PutObjectRequest                  │
+└────────────────────────────┼──────────────────────────────────────┘
+                             │
+                             │ S3 Client (AWS SDK)
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    Amazon S3 / LocalStack                        │
+│  • Bucket: configurable (default: "your-bucket-name")           │
+│  • Path: uploads/{email}/{uuid}-{filename}                      │
+│  • Dev Mode: LocalStack container (S3 emulation)                │
+│  • Prod: Real AWS S3 or Tigris                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Architecture Details
+
+**Frontend (Angular 19)**
+- Single Page Application (SPA) served via Quinoa
+- Passphrase authentication with session management
+- Route guards protect upload page
+- File upload with progress and error handling
+- HTTP error handling (403 → invalid passphrase, 413 → file too large)
+
+**Backend (Quarkus 3.30.7)**
+- RESTful API with OpenAPI/Swagger documentation
+- Multipart file upload handling (max 50MB per file)
+- Input validation (file size, email, file presence)
+- S3 integration via AWS SDK
+- DevServices: LocalStack for S3 emulation in dev mode
+
+**Storage (S3-Compatible)**
+- Development: LocalStack (containerized S3 emulation)
+- Production: AWS S3 or Tigris Object Storage
+- File organization: `uploads/{email}/{uuid}-{filename}`
+
+**Key Features**
+- ✅ Passphrase-protected file upload
+- ✅ File size validation (50MB limit)
+- ✅ Email-based file organization
+- ✅ HTTP error handling with user-friendly messages
+- ✅ Hot reload for both frontend and backend
+- ✅ OpenAPI documentation
+
+### Future Enhancements (Planned)
+
+The following components are included in dependencies but not yet implemented:
+
+```ascii
+[Quarkus Backend] ---> [NATS JetStream] ---> [F# Worker]
+                                                   │
+                                                   └──> Voice-to-Text Processing
+                                                   └──> Notification Service
+```
+
+**Planned Features:**
+- 🔲 NATS JetStream event publishing after file upload
+- 🔲 F# worker for voice-to-text transcription
+- 🔲 Event-driven notification system
+- 🔲 Asynchronous processing pipeline
+
 ## Technologies Used
 
 *   **Quarkus**: A full-stack, Kubernetes-native Java framework tailored for GraalVM and OpenJDK HotSpot, crafted from the best of breed Java libraries and standards.
