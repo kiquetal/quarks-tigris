@@ -14,6 +14,8 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework, to create a 
 The project is organized as follows:
 
 -   `src/main/java`: Contains the Java source code for the Quarkus backend.
+    -   API paths are controlled via `@Path` annotations for maximum flexibility
+    -   See [API_ORGANIZATION.md](./API_ORGANIZATION.md) for path organization guidelines
 -   `src/main/resources`: Contains the configuration files for the Quarkus application, such as `application.properties`.
 -   `src/main/webui`: Contains the Angular frontend application.
 
@@ -76,6 +78,18 @@ export const environment = {
 - Production: `'https://api.your-domain.com/whisper/api'`
 
 For detailed instructions, see [API_CONFIGURATION.md](./API_CONFIGURATION.md).
+
+## Usage
+
+1. **Access the application**: Navigate to `http://localhost:8080/whisper`
+2. **Enter passphrase**: The default passphrase is `your-secret-passphrase`
+3. **Upload MP3 file**: After successful validation, enter your email and select an MP3 file to upload
+
+### Default Configuration
+
+- **Passphrase**: `your-secret-passphrase` (change this in `FileUploadResource.java`)
+- **S3 Bucket**: `your-bucket-name` (change this in `FileUploadResource.java`)
+- **Upload path**: Files are stored as `uploads/{email}/{uuid}-{filename}`
 
 > **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
 
