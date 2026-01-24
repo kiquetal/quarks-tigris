@@ -88,8 +88,24 @@ For detailed instructions, see [API_CONFIGURATION.md](./API_CONFIGURATION.md).
 ### Default Configuration
 
 - **Passphrase**: `your-secret-passphrase` (change this in `FileUploadResource.java`)
-- **S3 Bucket**: `your-bucket-name` (change this in `FileUploadResource.java`)
+- **S3 Bucket**: `your-bucket-name` (configurable via `S3_BUCKET_NAME` env var, defaults to `your-bucket-name`)
 - **Upload path**: Files are stored as `uploads/{email}/{uuid}-{filename}`
+
+### Verifying S3 Uploads (LocalStack)
+
+When running in dev mode, Quarkus starts a LocalStack container. To verify uploads or list objects:
+
+1.  **Find the LocalStack port**:
+    ```bash
+    docker ps
+    # Look for the port mapping for 4566/tcp (e.g., 0.0.0.0:32790->4566/tcp)
+    ```
+
+2.  **List objects in the bucket**:
+    ```bash
+    # Replace 32790 with your actual port
+    aws --endpoint-url=http://localhost:32790 s3api list-objects --bucket your-bucket-name
+    ```
 
 > **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
 
