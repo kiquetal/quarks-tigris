@@ -47,3 +47,4 @@ nats-data/
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+.quinoa/
