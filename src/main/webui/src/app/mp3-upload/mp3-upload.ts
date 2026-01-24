@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { ApiService } from '../api.service';
 import { EncryptionService } from '../encryption.service';
 import { AuthService } from '../auth.service';
@@ -20,7 +21,8 @@ export class Mp3Upload {
   constructor(
     private apiService: ApiService,
     private encryptionService: EncryptionService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   onFileSelected(event: any) {
@@ -62,12 +64,15 @@ export class Mp3Upload {
             console.log('Upload successful:', res);
             alert('File uploaded successfully!');
 
-            // Clear the form for next upload
+            // Clear the form
             this.selectedFile = null;
             this.email = '';
             if (this.fileInput) {
               this.fileInput.value = '';
             }
+            
+            // Redirect to index
+            this.router.navigate(['/']);
           },
           error: (err: HttpErrorResponse) => {
             this.isEncrypting = false;

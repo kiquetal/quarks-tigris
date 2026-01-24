@@ -19,6 +19,11 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import me.cresterida.dto.ErrorResponse;
+import me.cresterida.dto.PassphraseRequest;
+import me.cresterida.dto.PassphraseResponse;
+import me.cresterida.dto.UploadResponse;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.UUID;
@@ -196,51 +201,6 @@ public class FileUploadResource {
         } else {
             return Response.status(Response.Status.FORBIDDEN).
                     entity(new PassphraseResponse(false)).build();
-        }
-    }
-
-    @Schema(description = "Passphrase validation request")
-    public static class PassphraseRequest {
-        @Schema(description = "The passphrase to validate", required = true)
-        public String passphrase;
-    }
-
-    @Schema(description = "Passphrase validation response")
-    public static class PassphraseResponse {
-        @Schema(description = "Whether the passphrase is valid")
-        public boolean validated;
-
-        public PassphraseResponse(boolean validated) {
-            this.validated = validated;
-        }
-    }
-
-    @Schema(description = "File upload response")
-    public static class UploadResponse {
-        @Schema(description = "Status message")
-        public String message;
-        @Schema(description = "S3 object key")
-        public String key;
-        @Schema(description = "Whether encryption was verified")
-        public boolean verified;
-        @Schema(description = "Original file size (before encryption)")
-        public long originalSize;
-
-        public UploadResponse(String message, String key, boolean verified, long originalSize) {
-            this.message = message;
-            this.key = key;
-            this.verified = verified;
-            this.originalSize = originalSize;
-        }
-    }
-
-    @Schema(description = "Error response")
-    public static class ErrorResponse {
-        @Schema(description = "Error message")
-        public String message;
-
-        public ErrorResponse(String message) {
-            this.message = message;
         }
     }
 }
