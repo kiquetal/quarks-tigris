@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ApiService } from '../api.service';
 
 @Component({
@@ -25,9 +26,27 @@ export class Mp3Upload {
           console.log('Upload successful:', res);
           alert(`File uploaded successfully! URL: ${res.fileUrl}`);
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           console.error('Upload failed:', err);
-          alert('Upload failed. Please try again.');
+
+          if (err.status === 403) {
+            // 403 Forbidden - unauthorized
+            alert('You are not authorized to upload files.');
+          } else if (err.status === 413) {
+            // 413 Payload Too Large
+            alert('File is too large. Please select a smaller file.');
+          } else if (err.status >= 500) {
+            // 5xx - Server error
+            alert('Server error. Please try again later.');
+          } else if (err.status === 0) {
+            // Network error
+            alert('Cannot connect to server. Please check your connection.');
+          } else if (err.status >= 400 && err.status < 500) {
+            // Other client errors (4xx)
+            alert('Upload failed: ' + (err.error?.message || 'Invalid request'));
+          } else {
+            alert('Upload failed. Please try again.');
+          }
         },
       });
     }

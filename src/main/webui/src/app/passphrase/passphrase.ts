@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import { ApiService } from '../api.service';
 
@@ -20,29 +21,35 @@ export class Passphrase {
   ) {}
 
   validatePassphrase() {
+    console.log('validatePassphrase called with:', this.passphrase);
     this.apiService.validatePassphrase(this.passphrase).subscribe({
       next: (res) => {
+        console.log('Success callback received:', res);
         if (res.validated) {
           this.authService.login();
           this.router.navigate(['/upload']);
         } else {
+          console.log('Passphrase invalid (success callback)');
           alert('Invalid passphrase');
         }
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Error validating passphrase:', err);
+        console.log('Error callback received');
+        console.error('Error details:', err);
+        console.log('Status code:', err.status);
+        console.log('Status text:', err.statusText);
 
         if (err.status === 403) {
-          // 403 Forbidden - invalid passphrase
-          alert('Invalid passphrase');
+          console.log('403 detected - showing alert');
+          alert('Invalid passphrase (403)');
         } else if (err.status >= 500) {
-          // 5xx - Server error
+          console.log('5xx detected - showing server error');
           alert('Server error. Please try again later.');
         } else if (err.status === 0) {
-          // Network error
+          console.log('Status 0 detected - network error');
           alert('Cannot connect to server. Please check your connection.');
         } else {
-          // Other client errors (4xx)
+          console.log('Other 4xx detected:', err.status);
           alert('Request failed. Please try again.');
         }
       }
