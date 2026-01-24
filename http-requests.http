@@ -8,6 +8,9 @@
 ### Test email
 @email = test@example.com
 
+### Test UUID (replace with actual UUID from upload response)
+@uuid = YOUR-FILE-UUID-HERE
+
 ################################################################################
 ### 1. Validate Passphrase - SUCCESS (Valid passphrase)
 ################################################################################
@@ -120,7 +123,13 @@ Content-Type: application/octet-stream
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
 ################################################################################
-### 9. Health Check (Optional - if endpoint exists)
+### 10. Decrypt and Download File
+### Replace @uuid with the actual UUID from your upload response
+################################################################################
+GET {{baseUrl}}/api/decrypt?email={{email}}&uuid={{uuid}}
+
+################################################################################
+### 11. Health Check (Optional - if endpoint exists)
 ################################################################################
 GET {{baseUrl}}/q/health
 

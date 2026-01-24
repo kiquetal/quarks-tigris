@@ -123,4 +123,40 @@ public class S3StorageService {
     public String getBucketName() {
         return bucketName;
     }
+
+    /**
+     * Download a file from S3.
+     *
+     * @param key S3 object key
+     * @return File content as byte array
+     */
+    public byte[] downloadFile(String key) {
+        System.out.println("Downloading file from S3: " + key);
+
+        try (var response = s3.getObject(builder -> builder
+                .bucket(bucketName)
+                .key(key))) {
+            return response.readAllBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to download file from S3: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Download metadata JSON from S3.
+     *
+     * @param key S3 object key
+     * @return Metadata JSON content as string
+     */
+    public String downloadMetadata(String key) {
+        System.out.println("Downloading metadata from S3: " + key);
+
+        try (var response = s3.getObject(builder -> builder
+                .bucket(bucketName)
+                .key(key))) {
+            return new String(response.readAllBytes());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to download metadata from S3: " + e.getMessage(), e);
+        }
+    }
 }

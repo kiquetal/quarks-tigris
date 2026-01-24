@@ -48,3 +48,4 @@ nats-data/
 # TLS Certificates
 .certs/
 .quinoa/
+downloads/
