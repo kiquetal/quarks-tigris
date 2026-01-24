@@ -27,24 +27,24 @@ You can run your application in dev mode that enables live coding using:
 
 This command will start both the Quarkus backend and the Angular frontend in development mode. 
 
-**Important**: Access the application at `http://localhost:8080/whisper` (not port 4200). 
+**Important**: Access the application at `http://localhost:8080` (not port 4200). 
 
 ### URL Structure
 
-The application uses `/whisper` as the base path. Quinoa automatically routes requests based on the URL path:
+Quinoa automatically routes requests based on the URL path:
 
 - **Frontend Routes** (Angular SPA):
-  - `http://localhost:8080/whisper/` → Angular app (redirects to `/passphrase`)
-  - `http://localhost:8080/whisper/passphrase` → Passphrase page
-  - `http://localhost:8080/whisper/upload` → Upload page
+  - `http://localhost:8080/` → Angular app (redirects to `/passphrase`)
+  - `http://localhost:8080/passphrase` → Passphrase page
+  - `http://localhost:8080/upload` → Upload page
 
 - **Backend API Routes** (Quarkus REST):
-  - `http://localhost:8080/whisper/api/validate-passphrase` → Passphrase validation endpoint
-  - `http://localhost:8080/whisper/api/upload` → File upload endpoint
+  - `http://localhost:8080/api/validate-passphrase` → Passphrase validation endpoint
+  - `http://localhost:8080/api/upload` → File upload endpoint
 
 - **OpenAPI/Swagger Documentation**:
-  - `http://localhost:8080/whisper/swagger` → OpenAPI specification (JSON)
-  - `http://localhost:8080/whisper/swagger-ui` → Swagger UI (interactive API documentation)
+  - `http://localhost:8080/swagger` → OpenAPI specification (JSON)
+  - `http://localhost:8080/swagger-ui` → Swagger UI (interactive API documentation)
 
 Quinoa intelligently proxies the Angular dev server through Quarkus, so:
 - Any path starting with `/api` is handled by your Quarkus backend

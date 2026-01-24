@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-passphrase',
@@ -13,18 +13,20 @@ import { AuthService } from '../auth.service';
 export class Passphrase {
   passphrase = '';
 
-  constructor(private http: HttpClient, private router: Router, private authService: AuthService) {}
+  constructor(
+    private apiService: ApiService,
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   validatePassphrase() {
-    this.http
-      .post('/api/validate-passphrase', { passphrase: this.passphrase })
-      .subscribe((res: any) => {
-        if (res.validated) {
-          this.authService.login();
-          this.router.navigate(['/upload']);
-        } else {
-          alert('Invalid passphrase');
-        }
-      });
+    this.apiService.validatePassphrase(this.passphrase).subscribe((res) => {
+      if (res.validated) {
+        this.authService.login();
+        this.router.navigate(['/upload']);
+      } else {
+        alert('Invalid passphrase');
+      }
+    });
   }
 }

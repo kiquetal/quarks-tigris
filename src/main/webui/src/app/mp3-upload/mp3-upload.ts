@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-mp3-upload',
@@ -12,7 +12,7 @@ export class Mp3Upload {
   selectedFile: File | null = null;
   email = '';
 
-  constructor(private http: HttpClient) {}
+  constructor(private apiService: ApiService) {}
 
   onFileSelected(event: any) {
     this.selectedFile = event.target.files[0];
@@ -20,11 +20,15 @@ export class Mp3Upload {
 
   onUpload() {
     if (this.selectedFile) {
-      const formData = new FormData();
-      formData.append('file', this.selectedFile, this.selectedFile.name);
-      formData.append('email', this.email);
-      this.http.post('/api/upload', formData).subscribe((res) => {
-        console.log(res);
+      this.apiService.uploadFile(this.selectedFile, this.email).subscribe({
+        next: (res) => {
+          console.log('Upload successful:', res);
+          alert(`File uploaded successfully! URL: ${res.fileUrl}`);
+        },
+        error: (err) => {
+          console.error('Upload failed:', err);
+          alert('Upload failed. Please try again.');
+        },
       });
     }
   }

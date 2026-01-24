@@ -1,5 +1,5 @@
 <div class="container">
   <h1>Enter Passphrase</h1>
-  <input type="password" [(ngModel)]="passphrase" placeholder="Enter passphrase" />
+  <input type="password" [(ngModel)]="passphrase" placeholder="Enter passphrase" (keyup.enter)="validatePassphrase()" />
   <button (click)="validatePassphrase()">Validate</button>
 </div>
