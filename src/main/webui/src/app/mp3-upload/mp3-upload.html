@@ -3,9 +3,6 @@
   <input type="email" [(ngModel)]="email" placeholder="Enter your email" />
   <input type="file" (change)="onFileSelected($event)" accept=".mp3,audio/mpeg" />
   <button (click)="onUpload()" [disabled]="!selectedFile || !email || isEncrypting">
-    {{ isEncrypting ? 'Encrypting...' : 'Upload' }}
+    {{ isEncrypting ? 'Uploading...' : 'Upload' }}
   </button>
-  @if (isEncrypting) {
-    <p class="encrypting-message">Encrypting file with AES-GCM...</p>
-  }
 </div>

@@ -15,6 +15,7 @@ export class Mp3Upload {
   selectedFile: File | null = null;
   email = '';
   isEncrypting = false;
+  fileInput: HTMLInputElement | null = null;
 
   constructor(
     private apiService: ApiService,
@@ -23,6 +24,7 @@ export class Mp3Upload {
   ) {}
 
   onFileSelected(event: any) {
+    this.fileInput = event.target;
     this.selectedFile = event.target.files[0];
     if (this.selectedFile) {
       console.log('File selected:', {
@@ -50,18 +52,25 @@ export class Mp3Upload {
       try {
         // Encrypt the file
         this.isEncrypting = true;
-        console.log('Encrypting file with AES-GCM...');
         const encryptedFile = await this.encryptionService.encryptFile(this.selectedFile, passphrase);
-        this.isEncrypting = false;
         console.log('Encryption complete. Encrypted size:', encryptedFile.size, 'bytes');
 
         // Upload the encrypted file
         this.apiService.uploadFile(encryptedFile, this.email).subscribe({
           next: (res) => {
+            this.isEncrypting = false;
             console.log('Upload successful:', res);
             alert('File uploaded successfully!');
+
+            // Clear the form for next upload
+            this.selectedFile = null;
+            this.email = '';
+            if (this.fileInput) {
+              this.fileInput.value = '';
+            }
           },
           error: (err: HttpErrorResponse) => {
+            this.isEncrypting = false;
             console.error('Upload failed:', err);
             console.log('Error status:', err.status);
             console.log('Error status text:', err.statusText);

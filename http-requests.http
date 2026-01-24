@@ -1,0 +1,132 @@
+### Quarkus File Upload API Tests
+### Base URL
+@baseUrl = http://localhost:8080/whisper
+
+### Valid passphrase (must match app.passphrase in application.properties)
+@passphrase = your-secret-passphrase
+
+### Test email
+@email = test@example.com
+
+################################################################################
+### 1. Validate Passphrase - SUCCESS (Valid passphrase)
+################################################################################
+POST {{baseUrl}}/api/validate-passphrase
+Content-Type: application/json
+
+{
+  "passphrase": "{{passphrase}}"
+}
+
+################################################################################
+### 2. Validate Passphrase - FAIL (Invalid passphrase)
+################################################################################
+POST {{baseUrl}}/api/validate-passphrase
+Content-Type: application/json
+
+{
+  "passphrase": "wrong-passphrase"
+}
+
+################################################################################
+### 3. Upload File - FAIL (No encryption - plain file)
+################################################################################
+POST {{baseUrl}}/api/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="email"
+
+{{email}}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.mp3"
+Content-Type: audio/mpeg
+
+This is plain text, not encrypted data. Should be rejected.
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+################################################################################
+### 4. Upload File - FAIL (Invalid encrypted format - too short)
+################################################################################
+POST {{baseUrl}}/api/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="email"
+
+{{email}}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.mp3.encrypted"
+Content-Type: application/octet-stream
+
+ShortData
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+################################################################################
+### 5. Upload File - FAIL (Missing email)
+################################################################################
+POST {{baseUrl}}/api/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.mp3.encrypted"
+Content-Type: application/octet-stream
+
+This is fake encrypted data that should fail validation.
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+################################################################################
+### 6. Upload File - FAIL (Empty email)
+################################################################################
+POST {{baseUrl}}/api/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="email"
+
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.mp3.encrypted"
+Content-Type: application/octet-stream
+
+FakeEncryptedData
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+################################################################################
+### 7. Upload File - FAIL (File too large - simulated)
+### Note: This is a comment - actual test would need a 100MB+ file
+################################################################################
+# POST {{baseUrl}}/api/upload
+# Content-Type: multipart/form-data
+#
+# file: @large-file.mp3.encrypted (> 100MB)
+# email: {{email}}
+
+################################################################################
+### 8. Upload File - FAIL (Invalid GCM tag - corrupted encryption)
+################################################################################
+POST {{baseUrl}}/api/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="email"
+
+{{email}}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="corrupted.mp3.encrypted"
+Content-Type: application/octet-stream
+
+0123456789abcdef0123456789abcdef0123456789abcdefghijklmnopqrstuvwxyz
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+################################################################################
+### 9. Health Check (Optional - if endpoint exists)
+################################################################################
+GET {{baseUrl}}/q/health
+
+################################################################################
+### 10. OpenAPI Documentation
+################################################################################
+GET {{baseUrl}}/swagger
+
+###############################################################################
