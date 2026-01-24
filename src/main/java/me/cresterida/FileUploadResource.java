@@ -100,21 +100,28 @@ public class FileUploadResource {
                     System.out.println("Decryption verification: " + (decryptResult.verified ? "SUCCESS" : "FAILED"));
                     System.out.println("Decrypted size: " + decryptResult.size + " bytes");
 
-                    // Step 2: Encrypt the decrypted data using KEK envelope encryption (streaming)
+                    // Step 2: Encrypt the decrypted data using DEK (streaming)
                     try (java.io.FileInputStream decryptedInput = new java.io.FileInputStream(tempDecrypted.toFile());
-                         java.io.FileOutputStream kekEncryptedOutput = new java.io.FileOutputStream(tempEncrypted.toFile())) {
+                         java.io.FileOutputStream dekEncryptedOutput = new java.io.FileOutputStream(tempEncrypted.toFile())) {
 
-                        CryptoService.StreamingEnvelopeEncryptionResult envelopeResult =
-                            cryptoService.encryptWithEnvelopeStreaming(decryptedInput, kekEncryptedOutput);
+                        CryptoService.StreamingDataEncryptionResult dekResult =
+                            cryptoService.encryptWithDekStreaming(decryptedInput, dekEncryptedOutput);
 
-                        System.out.println("Envelope encrypted size: " + envelopeResult.encryptedSize + " bytes");
+                        System.out.println("DEK encrypted size: " + dekResult.encryptedSize + " bytes");
 
-                        // Create envelope metadata (with the encrypted KEK)
+                        // Step 3: Create envelope by encrypting the DEK with master key
+                        String encryptedDek = cryptoService.createEnvelopeDek(dekResult.dek);
+                        System.out.println("Envelope created: DEK encrypted with master key");
+
+                        // Clear the plaintext DEK from memory
+                        java.util.Arrays.fill(dekResult.dek, (byte) 0);
+
+                        // Create envelope metadata (with the encrypted DEK)
                         EnvelopeMetadata metadata = new EnvelopeMetadata(
-                            envelopeResult.encryptedKek,  // The KEK encrypted with master key
+                            encryptedDek,  // The DEK encrypted with master key
                             file.fileName(),
                             decryptResult.size,
-                            envelopeResult.encryptedSize,
+                            dekResult.encryptedSize,
                             decryptResult.verified
                         );
 
