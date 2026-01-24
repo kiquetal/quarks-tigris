@@ -6,11 +6,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -23,6 +19,7 @@ import me.cresterida.dto.ErrorResponse;
 import me.cresterida.dto.PassphraseRequest;
 import me.cresterida.dto.PassphraseResponse;
 import me.cresterida.dto.UploadResponse;
+import me.cresterida.util.S3StorageService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,7 +30,7 @@ import java.util.UUID;
 public class FileUploadResource {
 
     @Inject
-    S3Client s3;
+    S3StorageService s3StorageService;
 
     @Inject
     CryptoService cryptoService;
@@ -41,8 +38,6 @@ public class FileUploadResource {
     @Inject
     ObjectMapper objectMapper;
 
-    @ConfigProperty(name = "bucket.name")
-    String bucketName;
 
     @POST
     @Path("/upload")
@@ -85,10 +80,7 @@ public class FileUploadResource {
 
         try {
             // Generate S3 keys first
-            String baseFileName = file.fileName().replace(".encrypted", "");
             String fileId = UUID.randomUUID().toString();
-            String dataKey = "uploads/" + email + "/" + fileId + "/" + baseFileName + ".enc";
-            String metadataKey = "uploads/" + email + "/" + fileId + "/metadata.json";
 
             // Create temporary file for decrypted data (will be cleaned up automatically)
             java.nio.file.Path tempDecrypted = Files.createTempFile("decrypted-", ".tmp");
@@ -136,29 +128,21 @@ public class FileUploadResource {
                         System.out.println("Created envelope metadata JSON:");
                         System.out.println(metadataJson);
 
-                        // Upload DEK-encrypted data to S3 (streaming)
-                        PutObjectRequest dataRequest = PutObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(dataKey)
-                                .contentType("application/octet-stream")
-                                .contentLength(dekResult.encryptedSize)
-                                .build();
-                        s3.putObject(dataRequest, RequestBody.fromFile(tempEncrypted));
-                        System.out.println("✓ DEK-encrypted data uploaded to S3: " + dataKey);
+                        // Upload encrypted file and metadata to S3
+                        S3StorageService.UploadResult uploadResult = s3StorageService.uploadFileAndMetadata(
+                            email,
+                            file.fileName(),
+                            fileId,
+                            tempEncrypted,
+                            dekResult.encryptedSize,
+                            metadataJson
+                        );
 
-                        // Upload metadata JSON to S3
-                        PutObjectRequest metadataRequest = PutObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(metadataKey)
-                                .contentType("application/json")
-                                .build();
-                        s3.putObject(metadataRequest, RequestBody.fromString(metadataJson));
-                        System.out.println("✓ Envelope metadata uploaded to S3: " + metadataKey);
                         System.out.println("=".repeat(80));
 
                         return Response.ok(new UploadResponse(
                             "File uploaded successfully with envelope encryption",
-                            dataKey,
+                            uploadResult.dataKey,
                             decryptResult.verified,
                             decryptResult.size
                         )).build();
