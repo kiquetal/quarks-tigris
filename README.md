@@ -1,10 +1,74 @@
-# quarkus-tigris
+# Quarks-Tigris: Secure File Upload Service
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework, to create a backend service that handles file uploads to Amazon S3. It also includes an Angular frontend for user interaction.
+A Quarkus-based secure file upload service with Angular frontend, featuring envelope encryption and S3/Tigris storage.
 
-## System Architecture
+## Features
 
-### Current Implementation
+✅ **Client-Side Encryption** - Files encrypted in browser with AES-GCM  
+✅ **Envelope Encryption** - Server-side re-encryption with random DEK + master key  
+✅ **Streaming Processing** - Memory-efficient handling of large files  
+✅ **S3/Tigris Storage** - Scalable object storage  
+✅ **Angular Frontend** - Modern SPA with authentication  
+✅ **OpenAPI Documentation** - Auto-generated API docs  
+
+## Quick Start
+
+### Prerequisites
+- Java 21+
+- Maven 3.9+
+- Node.js 20+ (for frontend)
+- Docker (optional, for LocalStack)
+
+### Run in Development Mode
+
+```bash
+# Start with hot reload (backend + frontend)
+./mvnw quarkus:dev
+
+# Or use the convenience script
+./dev-mode.sh
+```
+
+Access the application:
+- **Web UI**: http://localhost:8080/whisper
+- **API Docs**: http://localhost:8080/whisper/swagger-ui
+- **Health Check**: http://localhost:8080/whisper/q/health
+
+### Default Passphrase
+```
+your-secret-passphrase
+```
+(Change in `application.properties`)
+
+## Project Structure
+
+```
+quarks-tigris/
+├── src/main/java/me/cresterida/
+│   ├── FileUploadResource.java      # REST endpoints
+│   ├── dto/                          # Request/Response DTOs
+│   │   ├── ErrorResponse.java
+│   │   ├── PassphraseRequest.java
+│   │   ├── PassphraseResponse.java
+│   │   └── UploadResponse.java
+│   ├── model/                        # Data models
+│   │   └── EnvelopeMetadata.java
+│   ├── service/                      # Business logic
+│   │   └── CryptoService.java       # Encryption service
+│   └── util/                         # Utilities
+│       └── S3StorageService.java    # S3 operations
+├── src/main/webui/                  # Angular frontend
+│   └── src/app/
+│       ├── passphrase/              # Authentication
+│       ├── mp3-upload/              # File upload
+│       └── auth.guard.ts            # Route protection
+└── docs/                            # Additional documentation
+    └── archive/                     # Historical docs
+```
+
+## Architecture
+
+### System Overview
 
 ```ascii
 ┌──────────────────────────────────────────────────────────────────┐
@@ -21,317 +85,185 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework, to create a 
 │  │   Component    │  │   & Service    │  │   Component       │  │
 │  └────────────────┘  └────────────────┘  └───────────────────┘  │
 │         │                                          │              │
-│         │ 2. POST /api/validate-passphrase        │              │
+│         │ 2. Validate Passphrase                  │              │
+│         │    (AES-GCM client-side encryption)     │              │
 │         └──────────────────┬───────────────────────┘              │
-│                            │ 3. POST /api/upload (multipart)      │
+│                            │ 3. Upload Encrypted File             │
 └────────────────────────────┼──────────────────────────────────────┘
                              │
                              │ Quinoa Integration
-                             │ (Serves Angular + Routes API calls)
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                      Quarkus Backend (REST)                      │
+│                      Quarkus Backend                             │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │              FileUploadResource.java                       │  │
-│  │  • POST /api/validate-passphrase (403 on invalid)         │  │
-│  │  • POST /api/upload (50MB limit, multipart)               │  │
-│  │  • Validates: file size, email, file presence             │  │
-│  │  • Returns: 200 (success), 400 (validation), 413 (size)   │  │
+│  │              FileUploadResource                            │  │
+│  │  • POST /api/validate-passphrase                          │  │
+│  │  • POST /api/upload (100MB limit)                         │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                            │                                      │
-│                            │ 4. Upload File                       │
-│                            │    PutObjectRequest                  │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │              CryptoService (service/)                      │  │
+│  │  • Verify & decrypt from Angular                          │  │
+│  │  • Encrypt with random DEK (streaming)                    │  │
+│  │  • Create envelope (encrypt DEK with master key)          │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                            │                                      │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │           S3StorageService (util/)                         │  │
+│  │  • Generate S3 keys                                        │  │
+│  │  • Upload encrypted file                                   │  │
+│  │  • Upload envelope metadata                                │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                            │                                      │
+│                            │ 4. Store Encrypted Data              │
 └────────────────────────────┼──────────────────────────────────────┘
                              │
-                             │ S3 Client (AWS SDK)
+                             │ S3 Client
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Amazon S3 / LocalStack                        │
-│  • Bucket: configurable (default: "your-bucket-name")           │
-│  • Path: uploads/{email}/{uuid}-{filename}                      │
-│  • Dev Mode: LocalStack container (S3 emulation)                │
-│  • Prod: Real AWS S3 or Tigris                                  │
+│                    S3/Tigris Object Storage                      │
+│  • uploads/{email}/{uuid}/file.enc    (encrypted data)          │
+│  • uploads/{email}/{uuid}/metadata.json (encrypted DEK)         │
+│                                                                  │
+│  Dev:  LocalStack (Docker container)                            │
+│  Prod: Tigris or AWS S3                                         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Architecture Details
+### Encryption Flow
 
-**Frontend (Angular 19)**
-- Single Page Application (SPA) served via Quinoa
-- Passphrase authentication with session management
-- Route guards protect upload page
-- File upload with progress and error handling
-- HTTP error handling (403 → invalid passphrase, 413 → file too large)
-
-**Backend (Quarkus 3.30.7)**
-- RESTful API with OpenAPI/Swagger documentation
-- Multipart file upload handling (max 50MB per file)
-- Input validation (file size, email, file presence)
-- S3 integration via AWS SDK
-- DevServices: LocalStack for S3 emulation in dev mode
-
-**Storage (S3-Compatible)**
-- Development: LocalStack (containerized S3 emulation)
-- Production: AWS S3 or Tigris Object Storage
-- File organization: `uploads/{email}/{uuid}-{filename}`
-
-**Key Features**
-- ✅ Passphrase-protected file upload
-- ✅ File size validation (50MB limit)
-- ✅ Email-based file organization
-- ✅ HTTP error handling with user-friendly messages
-- ✅ Hot reload for both frontend and backend
-- ✅ OpenAPI documentation
-
-### Future Enhancements (Planned)
-
-The following components are included in dependencies but not yet implemented:
-
-```ascii
-[Quarkus Backend] ---> [NATS JetStream] ---> [F# Worker]
-                                                   │
-                                                   └──> Voice-to-Text Processing
-                                                   └──> Notification Service
+```
+User Browser
+    ↓ (Client encrypts with passphrase: AES-256-GCM + PBKDF2)
+Encrypted File → Quarkus Backend
+    ↓ (Verify passphrase & decrypt: streaming)
+Plaintext Data → CryptoService
+    ↓ (Encrypt with random DEK: streaming)
+DEK-Encrypted Data
+    ↓ (Encrypt DEK with master key: envelope)
+S3/Tigris Storage
+    ├─ Encrypted File Data
+    └─ Metadata (with encrypted DEK)
 ```
 
-**Planned Features:**
-- 🔲 NATS JetStream event publishing after file upload
-- 🔲 F# worker for voice-to-text transcription
-- 🔲 Event-driven notification system
-- 🔲 Asynchronous processing pipeline
+### Security Layers
 
-## Technologies Used
+1. **Client-Side**: AES-256-GCM with PBKDF2 (100k iterations)
+2. **Server-Side**: Random DEK per file for data encryption
+3. **Envelope**: DEK encrypted with master key for secure storage
+4. **Streaming**: Memory-efficient processing (8KB buffers)
 
-*   **Quarkus**: A full-stack, Kubernetes-native Java framework tailored for GraalVM and OpenJDK HotSpot, crafted from the best of breed Java libraries and standards.
-*   **Angular**: A platform for building mobile and desktop web applications.
-*   **Quinoa**: A Quarkus extension that simplifies the integration of a web UI, like one built with Angular, into a Quarkus application.
-*   **Amazon S3**: A scalable object storage service used to store the uploaded MP3 files.
+## Configuration
 
-## Project Structure
+### Environment Variables
 
-The project is organized as follows:
+```bash
+# S3/Tigris Configuration
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=auto
+S3_ENDPOINT_OVERRIDE=https://fly.storage.tigris.dev
+S3_BUCKET_NAME=your-bucket-name
 
--   `src/main/java`: Contains the Java source code for the Quarkus backend.
-    -   API paths are controlled via `@Path` annotations for maximum flexibility
-    -   See [API_ORGANIZATION.md](./API_ORGANIZATION.md) for path organization guidelines
--   `src/main/resources`: Contains the configuration files for the Quarkus application, such as `application.properties`.
--   `src/main/webui`: Contains the Angular frontend application.
-
-## Running the application in dev mode
-
-You can run your application in dev mode that enables live coding using:
-
-```shell script
-./mvnw quarkus:dev
+# Encryption
+APP_PASSPHRASE=your-secret-passphrase
+ENCRYPTION_MASTER_KEY=base64-encoded-master-key
 ```
 
-This command will start both the Quarkus backend and the Angular frontend in development mode. 
+### Generate Master Key
 
-**Important**: Access the application at `http://localhost:8080/whisper` (not port 4200). 
-
-### Development Modes
-
-The application supports two development modes:
-
-#### Option 1: DevServices Mode (Default - Automatic)
-
-Uses Quarkus DevServices with Testcontainers for automatic container management:
-
-```shell script
-./mvnw quarkus:dev
+```bash
+openssl rand -base64 32
 ```
 
-**Advantages:**
-- ✅ Zero configuration - containers start automatically
-- ✅ Clean state on each run
-- ✅ No manual service management
+## API Endpoints
 
-#### Option 2: Docker Compose Mode (Manual - Persistent Data)
+The application provides a RESTful API for passphrase validation and file upload.
 
-Uses Docker Compose for manual container management with data persistence:
+**Interactive API Documentation:**
+- **Swagger UI**: http://localhost:8080/whisper/swagger-ui
+- **OpenAPI Spec**: http://localhost:8080/whisper/swagger
 
-```shell script
-# 1. Start services
-docker-compose up -d
+Use the Swagger UI to explore and test all available endpoints with interactive documentation.
 
-# 2. Run Quarkus with Docker Compose backend
-USE_DEVSERVICES=false ./mvnw quarkus:dev
+## Documentation
 
-# Or use the helper script
-./dev-mode.sh
-```
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup guide
+- **[API_TESTING.md](API_TESTING.md)** - API testing guide with examples
+- **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](ENVELOPE_ENCRYPTION_ARCHITECTURE.md)** - Encryption architecture details
+- **[docs/archive/](docs/archive/)** - Historical documentation
 
-**Advantages:**
-- ✅ Persistent data between runs
-- ✅ Full control over services
-- ✅ Can inspect/debug services independently
-- ✅ Faster startup (no container creation)
+## Development
 
-**Services included:**
-- LocalStack (S3) on port 4566
-- NATS JetStream on port 4222
+### Hot Reload
+Both backend and frontend support hot reload in dev mode:
+- **Backend**: Automatic recompilation on Java changes
+- **Frontend**: Automatic rebuild on TypeScript/HTML/CSS changes
 
-For detailed Docker Compose instructions, see [DOCKER_COMPOSE.md](./DOCKER_COMPOSE.md).
+### Project Packages
 
-#### Option 3: Tigris Mode (Cloud Object Storage)
+**Backend Packages:**
+- `me.cresterida` - REST resources
+- `me.cresterida.dto` - Data Transfer Objects
+- `me.cresterida.model` - Domain models
+- `me.cresterida.service` - Business logic (encryption)
+- `me.cresterida.util` - Utilities (S3 storage)
 
-Uses Tigris Object Storage for production-ready S3-compatible cloud storage:
+**Frontend Structure:**
+- `passphrase/` - Authentication component
+- `mp3-upload/` - File upload component
+- `auth.guard.ts` - Route protection
+- `encryption.service.ts` - Client-side encryption
 
-```shell script
-# 1. Configure Tigris credentials (one-time setup)
-chmod +x setup-tigris.sh
-./setup-tigris.sh
+### Build for Production
 
-# 2. Load Tigris configuration
-source .env.tigris
-
-# 3. Run Quarkus with Tigris backend
-./mvnw quarkus:dev
-```
-
-**Advantages:**
-- ✅ Production-ready cloud storage
-- ✅ Global CDN distribution
-- ✅ Free tier (25 GB storage, 250 GB bandwidth/month)
-- ✅ No egress fees
-- ✅ S3-compatible API
-
-**Tigris Features:**
-- Global edge network for fast access
-- Automatic region routing
-- No per-request charges
-- Built-in redundancy
-
-For detailed Tigris setup instructions, see [TIGRIS_SETUP.md](./TIGRIS_SETUP.md).
-
-### URL Structure
-
-The application uses `/whisper` as the base path. Quinoa automatically routes requests based on the URL path:
-
-- **Frontend Routes** (Angular SPA):
-  - `http://localhost:8080/whisper/` → Angular app (redirects to `/passphrase`)
-  - `http://localhost:8080/whisper/passphrase` → Passphrase page
-  - `http://localhost:8080/whisper/upload` → Upload page
-
-- **Backend API Routes** (Quarkus REST):
-  - `http://localhost:8080/whisper/api/validate-passphrase` → Passphrase validation endpoint
-  - `http://localhost:8080/whisper/api/upload` → File upload endpoint
-
-- **OpenAPI/Swagger Documentation**:
-  - `http://localhost:8080/whisper/swagger` → OpenAPI specification (JSON)
-  - `http://localhost:8080/whisper/swagger-ui` → Swagger UI (interactive API documentation)
-
-Quinoa intelligently proxies the Angular dev server through Quarkus, so:
-- Any path starting with `/whisper/api` is handled by your Quarkus backend
-- All other paths under `/whisper` are served by the Angular application
-- No additional proxy configuration is needed!
-
-## API Configuration
-
-The Angular frontend uses a centralized API service that reads the backend URL from environment configuration files. This allows you to easily change the API endpoint for different environments.
-
-### Changing the Backend URL
-
-To change where the frontend sends API requests:
-
-1. **For Development**: Edit `src/main/webui/src/environments/environment.ts`
-2. **For Production**: Edit `src/main/webui/src/environments/environment.prod.ts`
-
-Update the `apiUrl` property:
-```typescript
-export const environment = {
-  production: false,
-  apiUrl: '/whisper/api',  // Change this to your backend URL
-};
-```
-
-**Examples**:
-- Relative URL (default): `'/whisper/api'`
-- Full URL for standalone Angular: `'http://localhost:8080/whisper/api'`
-- Production: `'https://api.your-domain.com/whisper/api'`
-
-For detailed instructions, see [API_CONFIGURATION.md](./API_CONFIGURATION.md).
-
-## Usage
-
-1. **Access the application**: Navigate to `http://localhost:8080/whisper`
-2. **Enter passphrase**: The default passphrase is `your-secret-passphrase`
-3. **Upload MP3 file**: After successful validation, enter your email and select an MP3 file to upload
-
-### Default Configuration
-
-- **Passphrase**: `your-secret-passphrase` (change this in `FileUploadResource.java`)
-- **S3 Bucket**: `your-bucket-name` (configurable via `S3_BUCKET_NAME` env var, defaults to `your-bucket-name`)
-- **Upload path**: Files are stored as `uploads/{email}/{uuid}-{filename}`
-
-### Verifying S3 Uploads (LocalStack)
-
-When running in dev mode, Quarkus starts a LocalStack container. To verify uploads or list objects:
-
-1.  **Find the LocalStack port**:
-    ```bash
-    docker ps
-    # Look for the port mapping for 4566/tcp (e.g., 0.0.0.0:32790->4566/tcp)
-    ```
-
-2.  **List objects in the bucket**:
-    ```bash
-    # Replace 32790 with your actual port
-    aws --endpoint-url=http://localhost:32790 s3api list-objects --bucket your-bucket-name
-    ```
-
-> **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at `http://localhost:8080/q/dev/`.
-
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
+```bash
+# Build JVM-based JAR
 ./mvnw package
-```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
+# Build native executable (requires GraalVM)
 ./mvnw package -Dnative
+
+# Build container
+docker build -f src/main/docker/Dockerfile.jvm -t quarks-tigris .
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+## Troubleshooting
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+### Port Already in Use
+```bash
+# Kill process on port 8080
+lsof -ti:8080 | xargs kill -9
 ```
 
-You can then execute your native executable with: `./target/quarkus-tigris-1.0.0-SNAPSHOT-runner`
+### S3 Connection Issues
+Check your endpoint configuration in `application.properties`:
+```properties
+quarkus.s3.endpoint-override=${S3_ENDPOINT_OVERRIDE}
+quarkus.s3.path-style-access=true
+```
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+### Frontend Build Errors
+```bash
+cd src/main/webui
+npm install
+npm run build
+```
 
-## Related Guides
+## Technology Stack
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Reactive Messaging Nats Jetstream ([guide](https://docs.quarkiverse.io/quarkus-reactive-messaging-nats-jetstream/dev/)): Easily integrate to nats.io JetStream.
-- Amazon S3 ([guide](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-s3.html)): Connect to Amazon S3 cloud storage
+- **Backend**: Quarkus 3.30.7, Java 21
+- **Frontend**: Angular 19, TypeScript
+- **Storage**: S3-compatible (Tigris, AWS S3, LocalStack)
+- **Encryption**: AES-256-GCM, PBKDF2
+- **API Docs**: OpenAPI/Swagger
+- **Build**: Maven, npm
 
-## Provided Code
+## License
 
-### REST
+Apache 2.0
 
-Easily start your REST Web Services
+---
 
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+**Built with ❤️ using Quarkus and Angular**
+
