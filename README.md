@@ -129,6 +129,50 @@ This command will start both the Quarkus backend and the Angular frontend in dev
 
 **Important**: Access the application at `http://localhost:8080/whisper` (not port 4200). 
 
+### Development Modes
+
+The application supports two development modes:
+
+#### Option 1: DevServices Mode (Default - Automatic)
+
+Uses Quarkus DevServices with Testcontainers for automatic container management:
+
+```shell script
+./mvnw quarkus:dev
+```
+
+**Advantages:**
+- ✅ Zero configuration - containers start automatically
+- ✅ Clean state on each run
+- ✅ No manual service management
+
+#### Option 2: Docker Compose Mode (Manual - Persistent Data)
+
+Uses Docker Compose for manual container management with data persistence:
+
+```shell script
+# 1. Start services
+docker-compose up -d
+
+# 2. Run Quarkus with Docker Compose backend
+USE_DEVSERVICES=false ./mvnw quarkus:dev
+
+# Or use the helper script
+./dev-mode.sh
+```
+
+**Advantages:**
+- ✅ Persistent data between runs
+- ✅ Full control over services
+- ✅ Can inspect/debug services independently
+- ✅ Faster startup (no container creation)
+
+**Services included:**
+- LocalStack (S3) on port 4566
+- NATS JetStream on port 4222
+
+For detailed Docker Compose instructions, see [DOCKER_COMPOSE.md](./DOCKER_COMPOSE.md).
+
 ### URL Structure
 
 The application uses `/whisper` as the base path. Quinoa automatically routes requests based on the URL path:

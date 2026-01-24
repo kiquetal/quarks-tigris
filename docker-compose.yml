@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # LocalStack - S3 compatible storage
+  localstack:
+    image: localstack/localstack:latest
+    container_name: quarks-tigris-localstack
+    ports:
+      - "4566:4566"      # LocalStack Gateway
+      - "4510-4559:4510-4559"  # External services port range
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PERSISTENCE=1
+    volumes:
+      - "./localstack-data:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - quarks-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NATS JetStream - Message broker (for future use)
+  nats:
+    image: nats:latest
+    container_name: quarks-tigris-nats
+    command: "-js -sd /data"
+    ports:
+      - "4222:4222"      # Client connections
+      - "8222:8222"      # HTTP management
+      - "6222:6222"      # Cluster connections
+    volumes:
+      - "./nats-data:/data"
+    networks:
+      - quarks-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # S3 Bucket initialization
+  localstack-init:
+    image: amazon/aws-cli:latest
+    container_name: quarks-tigris-s3-init
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'Waiting for LocalStack to be ready...';
+      sleep 5;
+      echo 'Creating S3 bucket...';
+      aws --endpoint-url=http://localstack:4566 s3 mb s3://whisper-uploads || true;
+      echo 'Listing buckets:';
+      aws --endpoint-url=http://localstack:4566 s3 ls;
+      echo 'S3 initialization complete!';
+      "
+    networks:
+      - quarks-network
+
+networks:
+  quarks-network:
+    driver: bridge
+
+volumes:
+  localstack-data:
+  nats-data:
