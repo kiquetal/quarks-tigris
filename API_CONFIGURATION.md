@@ -49,13 +49,13 @@ apiUrl: 'https://your-domain.com/api'
 
 The following endpoints are available:
 
-- **POST** `/api/validate-passphrase` - Validates user passphrase
+- **POST** `/whisper/api/validate-passphrase` - Validates user passphrase
   ```json
   Request: { "passphrase": "your-secret" }
   Response: { "validated": true }
   ```
 
-- **POST** `/api/upload` - Uploads MP3 file
+- **POST** `/whisper/api/upload` - Uploads MP3 file
   ```
   Form Data:
   - file: File
@@ -68,17 +68,17 @@ The following endpoints are available:
 
 #### Example 1: Change to Different Port
 ```typescript
-apiUrl: 'http://localhost:9090/api'
+apiUrl: 'http://localhost:9090/whisper/api'
 ```
 
 #### Example 2: Change to Different Host
 ```typescript
-apiUrl: 'http://192.168.1.100:8080/api'
+apiUrl: 'http://192.168.1.100:8080/whisper/api'
 ```
 
 #### Example 3: Production with HTTPS
 ```typescript
-apiUrl: 'https://api.myapp.com/api'
+apiUrl: 'https://api.myapp.com/whisper/api'
 ```
 
 ### Testing Changes
