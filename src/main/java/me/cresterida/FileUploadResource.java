@@ -19,6 +19,8 @@ import me.cresterida.dto.ErrorResponse;
 import me.cresterida.dto.PassphraseRequest;
 import me.cresterida.dto.PassphraseResponse;
 import me.cresterida.dto.UploadResponse;
+import me.cresterida.model.EnvelopeMetadata;
+import me.cresterida.service.CryptoService;
 import me.cresterida.util.S3StorageService;
 
 import java.io.IOException;
