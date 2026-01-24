@@ -18,10 +18,9 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @Path("/api")
@@ -33,6 +32,9 @@ public class FileUploadResource {
 
     @Inject
     CryptoService cryptoService;
+
+    @Inject
+    ObjectMapper objectMapper;
 
     @ConfigProperty(name = "bucket.name")
     String bucketName;
@@ -47,8 +49,7 @@ public class FileUploadResource {
     @APIResponse(responseCode = "413", description = "File too large")
     public Response uploadFile(
             @RestForm("file") FileUpload file,
-            @RestForm("email") String email,
-            @RestForm("passphrase") String passphrase) {
+            @RestForm("email") String email) {
 
         // Validate inputs
         if (file == null) {
@@ -75,56 +76,91 @@ public class FileUploadResource {
         System.out.println("=".repeat(80));
         System.out.println("Uploading encrypted file: " + file.fileName() + " (" + file.size() + " bytes)");
         System.out.println("Email: " + email);
-        System.out.println("Passphrase provided: " + (passphrase != null && !passphrase.isEmpty()));
         System.out.println("=".repeat(80));
 
         try {
-            // Read the encrypted file from Angular
-            byte[] encryptedData = Files.readAllBytes(file.uploadedFile());
-            System.out.println("Read encrypted file: " + encryptedData.length + " bytes");
-
-            // Verify encryption and apply envelope encryption
-            CryptoService.EncryptionResult result = cryptoService.verifyAndEnvelopeEncrypt(
-                encryptedData,
-                passphrase,
-                file.fileName()
-            );
-
-            System.out.println("Encryption verification: " + (result.verified ? "SUCCESS" : "SKIPPED"));
-            System.out.println("Envelope encrypted size: " + result.envelopeEncryptedData.length + " bytes");
-            System.out.println("Original decrypted size: " + result.originalSize + " bytes");
-
-            // Generate S3 key with metadata
+            // Generate S3 keys first
             String baseFileName = file.fileName().replace(".encrypted", "");
-            String key = "uploads/" + email + "/" + UUID.randomUUID() + "-" + baseFileName + ".enc";
-            String metadataKey = key + ".metadata";
+            String fileId = UUID.randomUUID().toString();
+            String dataKey = "uploads/" + email + "/" + fileId + "/" + baseFileName + ".enc";
+            String metadataKey = "uploads/" + email + "/" + fileId + "/metadata.json";
 
-            // Store metadata separately (encrypted data key, original size, etc.)
-            Map<String, String> metadata = new HashMap<>();
-            metadata.put("encrypted-data-key", result.encryptedDataKey);
-            metadata.put("original-filename", result.originalFileName);
-            metadata.put("original-size", String.valueOf(result.originalSize));
-            metadata.put("verified", String.valueOf(result.verified));
-            metadata.put("encryption-version", "2.0-envelope");
+            // Create temporary file for decrypted data (will be cleaned up automatically)
+            java.nio.file.Path tempDecrypted = Files.createTempFile("decrypted-", ".tmp");
+            java.nio.file.Path tempEncrypted = Files.createTempFile("kek-encrypted-", ".tmp");
 
-            // Upload envelope-encrypted file to S3
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .metadata(metadata)
-                    .contentType("application/octet-stream")
-                    .build();
+            try {
+                // Step 1: Verify and decrypt the data from Angular (streaming)
+                try (java.io.FileInputStream encryptedInput = new java.io.FileInputStream(file.uploadedFile().toFile());
+                     java.io.FileOutputStream decryptedOutput = new java.io.FileOutputStream(tempDecrypted.toFile())) {
 
-            s3.putObject(putObjectRequest, RequestBody.fromBytes(result.envelopeEncryptedData));
-            System.out.println("File uploaded to S3: " + key);
-            System.out.println("=".repeat(80));
+                    CryptoService.StreamingDecryptionResult decryptResult =
+                        cryptoService.verifyAndDecryptStreaming(encryptedInput, decryptedOutput);
 
-            return Response.ok(new UploadResponse(
-                "File uploaded successfully with envelope encryption",
-                key,
-                result.verified,
-                result.originalSize
-            )).build();
+                    System.out.println("Decryption verification: " + (decryptResult.verified ? "SUCCESS" : "FAILED"));
+                    System.out.println("Decrypted size: " + decryptResult.size + " bytes");
+
+                    // Step 2: Encrypt the decrypted data using KEK envelope encryption (streaming)
+                    try (java.io.FileInputStream decryptedInput = new java.io.FileInputStream(tempDecrypted.toFile());
+                         java.io.FileOutputStream kekEncryptedOutput = new java.io.FileOutputStream(tempEncrypted.toFile())) {
+
+                        CryptoService.StreamingEnvelopeEncryptionResult envelopeResult =
+                            cryptoService.encryptWithEnvelopeStreaming(decryptedInput, kekEncryptedOutput);
+
+                        System.out.println("Envelope encrypted size: " + envelopeResult.encryptedSize + " bytes");
+
+                        // Create envelope metadata (with the encrypted KEK)
+                        EnvelopeMetadata metadata = new EnvelopeMetadata(
+                            envelopeResult.encryptedKek,  // The KEK encrypted with master key
+                            file.fileName(),
+                            decryptResult.size,
+                            envelopeResult.encryptedSize,
+                            decryptResult.verified
+                        );
+
+                        // Serialize metadata to JSON
+                        String metadataJson = objectMapper.writerWithDefaultPrettyPrinter()
+                            .writeValueAsString(metadata);
+                        System.out.println("Created envelope metadata JSON:");
+                        System.out.println(metadataJson);
+
+                        // Upload KEK-encrypted data to S3 (streaming)
+                        PutObjectRequest dataRequest = PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(dataKey)
+                                .contentType("application/octet-stream")
+                                .contentLength(envelopeResult.encryptedSize)
+                                .build();
+                        s3.putObject(dataRequest, RequestBody.fromFile(tempEncrypted));
+                        System.out.println("✓ KEK-encrypted data uploaded to S3: " + dataKey);
+
+                        // Upload metadata JSON to S3
+                        PutObjectRequest metadataRequest = PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(metadataKey)
+                                .contentType("application/json")
+                                .build();
+                        s3.putObject(metadataRequest, RequestBody.fromString(metadataJson));
+                        System.out.println("✓ Envelope metadata uploaded to S3: " + metadataKey);
+                        System.out.println("=".repeat(80));
+
+                        return Response.ok(new UploadResponse(
+                            "File uploaded successfully with envelope encryption",
+                            dataKey,
+                            decryptResult.verified,
+                            decryptResult.size
+                        )).build();
+                    }
+                }
+            } finally {
+                // Clean up temporary files
+                try {
+                    Files.deleteIfExists(tempDecrypted);
+                    Files.deleteIfExists(tempEncrypted);
+                } catch (IOException e) {
+                    System.err.println("Warning: Failed to delete temporary files: " + e.getMessage());
+                }
+            }
 
         } catch (IOException e) {
             System.err.println("IO Error: " + e.getMessage());

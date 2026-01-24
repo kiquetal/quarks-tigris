@@ -11,6 +11,7 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -44,51 +45,84 @@ public class CryptoService {
     @ConfigProperty(name = "encryption.verify.enabled", defaultValue = "true")
     boolean verificationEnabled;
 
+    @ConfigProperty(name = "app.passphrase", defaultValue = "your-secret-passphrase")
+    String appPassphrase;
+
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
-     * Result of encryption verification and re-encryption
+     * Result of decryption from Angular frontend (streaming version)
      */
-    public static class EncryptionResult {
-        public byte[] envelopeEncryptedData;
-        public String encryptedDataKey;
-        public String originalFileName;
-        public long originalSize;
-        public boolean verified;
+    public static class StreamingDecryptionResult {
+        public long size;                // Size of decrypted data
+        public boolean verified;         // Whether decryption succeeded
 
-        public EncryptionResult(byte[] envelopeEncryptedData, String encryptedDataKey,
-                              String originalFileName, long originalSize, boolean verified) {
-            this.envelopeEncryptedData = envelopeEncryptedData;
-            this.encryptedDataKey = encryptedDataKey;
-            this.originalFileName = originalFileName;
-            this.originalSize = originalSize;
+        public StreamingDecryptionResult(long size, boolean verified) {
+            this.size = size;
             this.verified = verified;
         }
     }
 
     /**
-     * Verifies and re-encrypts file data using envelope encryption.
+     * Result of data encryption with DEK (streaming version)
+     */
+    public static class StreamingDataEncryptionResult {
+        public byte[] dek;               // The Data Encryption Key used (32 bytes, plaintext)
+        public long encryptedSize;       // Size of encrypted data
+
+        public StreamingDataEncryptionResult(byte[] dek, long encryptedSize) {
+            this.dek = dek;
+            this.encryptedSize = encryptedSize;
+        }
+    }
+
+    /**
+     * Result of decryption from Angular frontend
+     */
+    public static class DecryptionResult {
+        public byte[] decryptedData;     // The plaintext data
+        public long size;                // Size of decrypted data
+        public boolean verified;         // Whether decryption succeeded
+
+        public DecryptionResult(byte[] decryptedData, long size, boolean verified) {
+            this.decryptedData = decryptedData;
+            this.size = size;
+            this.verified = verified;
+        }
+    }
+
+    /**
+     * Result of data encryption with DEK
+     */
+    public static class DataEncryptionResult {
+        public byte[] encryptedData;     // Data encrypted with DEK
+        public byte[] dek;               // The Data Encryption Key used (32 bytes, plaintext)
+        public long encryptedSize;       // Size of encrypted data
+
+        public DataEncryptionResult(byte[] encryptedData, byte[] dek, long encryptedSize) {
+            this.encryptedData = encryptedData;
+            this.dek = dek;
+            this.encryptedSize = encryptedSize;
+        }
+    }
+
+    /**
+     * Verifies and decrypts data from Angular frontend.
      *
      * Process:
-     * 1. Extract salt, IV, and encrypted data from input
-     * 2. Verify by decrypting with passphrase (optional)
-     * 3. Generate new data key for envelope encryption
-     * 4. Encrypt the already-encrypted data with the data key
-     * 5. Encrypt the data key with master key
+     * 1. Extract salt, IV, and encrypted data from Angular encryption
+     * 2. Decrypt using the application passphrase to verify and get plaintext
      *
      * @param encryptedData The encrypted data from Angular (salt + IV + encrypted content)
-     * @param passphrase The user's passphrase for verification
-     * @param originalFileName The original file name (before encryption)
-     * @return EncryptionResult containing envelope-encrypted data and encrypted data key
+     * @return DecryptionResult containing plaintext data
      */
-    public EncryptionResult verifyAndEnvelopeEncrypt(byte[] encryptedData, String passphrase,
-                                                     String originalFileName)
+    public DecryptionResult verifyAndDecrypt(byte[] encryptedData)
             throws GeneralSecurityException, IOException {
 
-        System.out.println("Starting verification and envelope encryption...");
+        System.out.println("Starting verification and decryption...");
         System.out.println("Input data size: " + encryptedData.length + " bytes");
 
-        // Parse the encrypted data structure
+        // Parse the encrypted data structure from Angular
         if (encryptedData.length < SALT_LENGTH + IV_LENGTH) {
             throw new IllegalArgumentException("Invalid encrypted data: too short");
         }
@@ -100,52 +134,128 @@ public class CryptoService {
         System.out.println("Extracted - Salt: " + SALT_LENGTH + " bytes, IV: " + IV_LENGTH +
                          " bytes, Ciphertext: " + ciphertext.length + " bytes");
 
-        // Verify decryption (optional but recommended)
-        byte[] decryptedData = null;
+        // Decrypt the data using the application passphrase to verify integrity
+        byte[] decryptedData;
         boolean verified = false;
 
-        if (verificationEnabled && passphrase != null && !passphrase.isEmpty()) {
-            try {
-                System.out.println("Verifying encryption with passphrase...");
-                decryptedData = decryptWithPassphrase(ciphertext, passphrase, salt, iv);
-                verified = true;
-                System.out.println("Verification successful! Decrypted size: " + decryptedData.length + " bytes");
-            } catch (Exception e) {
-                System.err.println("Verification failed: " + e.getMessage());
-                throw new GeneralSecurityException("Failed to verify encrypted data: " + e.getMessage());
-            }
-        } else {
-            System.out.println("Verification skipped (disabled or no passphrase)");
-            // If verification is disabled, we still process the encrypted data
-            verified = false;
+        try {
+            System.out.println("Decrypting with application passphrase for verification...");
+            decryptedData = decryptWithPassphrase(ciphertext, appPassphrase, salt, iv);
+            verified = true;
+            System.out.println("✓ Decryption successful! Original file size: " + decryptedData.length + " bytes");
+        } catch (Exception e) {
+            System.err.println("✗ Decryption failed: " + e.getMessage());
+            throw new GeneralSecurityException("Failed to decrypt and verify data: " + e.getMessage(), e);
         }
 
-        // Perform envelope encryption
-        // Generate a random data encryption key (DEK)
-        byte[] dataKey = new byte[32]; // 256 bits for AES-256
-        secureRandom.nextBytes(dataKey);
-        System.out.println("Generated data encryption key (DEK): 32 bytes");
+        return new DecryptionResult(decryptedData, decryptedData.length, verified);
+    }
 
-        // If we verified, encrypt the decrypted data; otherwise, encrypt the ciphertext as-is
-        byte[] dataToEncrypt = (verified && decryptedData != null) ? decryptedData : encryptedData;
+    /**
+     * Encrypts plaintext data with a randomly generated DEK (Data Encryption Key).
+     * Does NOT perform envelope encryption - that's done separately with createEnvelopeDek().
+     *
+     * @param plaintextData The plaintext data to encrypt
+     * @return DataEncryptionResult containing encrypted data and the plaintext DEK
+     */
+    public DataEncryptionResult encryptWithDek(byte[] plaintextData)
+            throws GeneralSecurityException {
 
-        // Encrypt the data with the DEK
-        byte[] envelopeEncrypted = encryptWithDataKey(dataToEncrypt, dataKey);
-        System.out.println("Envelope encryption complete. Size: " + envelopeEncrypted.length + " bytes");
+        System.out.println("Starting data encryption with DEK...");
+        System.out.println("Plaintext data size: " + plaintextData.length + " bytes");
 
-        // Encrypt the DEK with the master key
-        String encryptedDataKey = encryptDataKey(dataKey);
-        System.out.println("Data key encrypted with master key");
+        // Generate a new random DEK (Data Encryption Key) for this file
+        byte[] dek = new byte[32]; // 256 bits for AES-256
+        secureRandom.nextBytes(dek);
+        System.out.println("Generated new DEK (Data Encryption Key): 32 bytes");
+
+        // Encrypt the plaintext data with the DEK
+        byte[] encryptedData = encryptWithDataKey(plaintextData, dek);
+        System.out.println("DEK encryption complete. Size: " + encryptedData.length + " bytes");
+
+        return new DataEncryptionResult(encryptedData, dek, encryptedData.length);
+    }
+
+    /**
+     * Creates an envelope by encrypting a DEK with the master key.
+     * This is the "envelope" part of envelope encryption.
+     *
+     * @param dek The Data Encryption Key to encrypt (32 bytes)
+     * @return Base64-encoded encrypted DEK (format: [12 bytes IV][encrypted DEK + GCM tag])
+     */
+    public String createEnvelopeDek(byte[] dek) throws GeneralSecurityException {
+        System.out.println("Creating envelope: encrypting DEK with master key...");
+
+        String encryptedDek = encryptKekWithMasterKey(dek);
+
+        System.out.println("DEK encrypted with master key for storage");
+        return encryptedDek;
+    }
+
+    /**
+     * Encrypts a KEK (Key Encryption Key) with the master key.
+     * This is the core of envelope encryption - the KEK is encrypted before storage.
+     *
+     * @param kek The KEK to encrypt (32 bytes)
+     * @return Base64-encoded encrypted KEK (format: [12 bytes IV][encrypted KEK + GCM tag])
+     */
+    private String encryptKekWithMasterKey(byte[] kek) throws GeneralSecurityException {
+        // Decode the master key
+        byte[] masterKey = Base64.getDecoder().decode(masterKeyBase64);
+
+        // Generate random IV for this encryption
+        byte[] iv = new byte[IV_LENGTH];
+        secureRandom.nextBytes(iv);
+
+        // Encrypt the KEK with the master key
+        SecretKey masterSecretKey = new SecretKeySpec(masterKey, "AES");
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, masterSecretKey, gcmSpec);
+
+        byte[] encryptedKek = cipher.doFinal(kek);
+
+        // Combine IV + encrypted KEK
+        ByteBuffer buffer = ByteBuffer.allocate(iv.length + encryptedKek.length);
+        buffer.put(iv);
+        buffer.put(encryptedKek);
 
         // Clear sensitive data
-        Arrays.fill(dataKey, (byte) 0);
-        if (decryptedData != null) {
-            Arrays.fill(decryptedData, (byte) 0);
-        }
+        Arrays.fill(masterKey, (byte) 0);
 
-        long originalSize = verified && decryptedData != null ? decryptedData.length : 0;
+        // Return as base64 for storage in metadata
+        return Base64.getEncoder().encodeToString(buffer.array());
+    }
 
-        return new EncryptionResult(envelopeEncrypted, encryptedDataKey, originalFileName, originalSize, verified);
+    /**
+     * Decrypts a KEK that was encrypted with the master key.
+     *
+     * @param encryptedKekBase64 The encrypted KEK (base64-encoded: [IV][encrypted KEK + tag])
+     * @return The decrypted KEK (32 bytes)
+     */
+    private byte[] decryptKekWithMasterKey(String encryptedKekBase64) throws GeneralSecurityException {
+        // Decode the encrypted KEK
+        byte[] encryptedKekData = Base64.getDecoder().decode(encryptedKekBase64);
+
+        // Extract IV and ciphertext
+        byte[] iv = Arrays.copyOfRange(encryptedKekData, 0, IV_LENGTH);
+        byte[] ciphertext = Arrays.copyOfRange(encryptedKekData, IV_LENGTH, encryptedKekData.length);
+
+        // Decode the master key
+        byte[] masterKey = Base64.getDecoder().decode(masterKeyBase64);
+
+        // Decrypt the KEK with the master key
+        SecretKey masterSecretKey = new SecretKeySpec(masterKey, "AES");
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.DECRYPT_MODE, masterSecretKey, gcmSpec);
+
+        byte[] kek = cipher.doFinal(ciphertext);
+
+        // Clear sensitive data
+        Arrays.fill(masterKey, (byte) 0);
+
+        return kek;
     }
 
     /**
@@ -206,66 +316,25 @@ public class CryptoService {
     }
 
     /**
-     * Encrypts a data encryption key (DEK) with the master key.
-     * Returns base64-encoded encrypted key.
+     * Decrypts KEK-encrypted data using the KEK from envelope metadata.
+     *
+     * @param kekEncryptedData The encrypted data (format: [12 bytes IV][encrypted data + GCM tag])
+     * @param encryptedKekBase64 The encrypted KEK as base64 string (from metadata.json)
+     * @return The decrypted plaintext data
      */
-    private String encryptDataKey(byte[] dataKey) throws GeneralSecurityException {
-        byte[] masterKey = Base64.getDecoder().decode(masterKeyBase64);
-        SecretKey key = new SecretKeySpec(masterKey, "AES");
-
-        // Generate random IV for master key encryption
-        byte[] iv = new byte[IV_LENGTH];
-        secureRandom.nextBytes(iv);
-
-        // Encrypt DEK with master key
-        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
-        byte[] encryptedDek = cipher.doFinal(dataKey);
-
-        // Combine IV + encrypted DEK and encode as base64
-        ByteBuffer buffer = ByteBuffer.allocate(iv.length + encryptedDek.length);
-        buffer.put(iv);
-        buffer.put(encryptedDek);
-
-        return Base64.getEncoder().encodeToString(buffer.array());
-    }
-
-    /**
-     * Decrypts a data encryption key (DEK) using the master key.
-     */
-    public byte[] decryptDataKey(String encryptedDataKeyBase64) throws GeneralSecurityException {
-        byte[] encryptedDataKey = Base64.getDecoder().decode(encryptedDataKeyBase64);
-        byte[] masterKey = Base64.getDecoder().decode(masterKeyBase64);
-        SecretKey key = new SecretKeySpec(masterKey, "AES");
-
-        // Extract IV and encrypted DEK
-        byte[] iv = Arrays.copyOfRange(encryptedDataKey, 0, IV_LENGTH);
-        byte[] encryptedDek = Arrays.copyOfRange(encryptedDataKey, IV_LENGTH, encryptedDataKey.length);
-
-        // Decrypt
-        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-        cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
-
-        return cipher.doFinal(encryptedDek);
-    }
-
-    /**
-     * Decrypts envelope-encrypted data.
-     */
-    public byte[] decryptEnvelopeData(byte[] envelopeEncryptedData, String encryptedDataKeyBase64)
+    public byte[] decryptWithKek(byte[] kekEncryptedData, String encryptedKekBase64)
             throws GeneralSecurityException {
 
-        // Decrypt the data key
-        byte[] dataKey = decryptDataKey(encryptedDataKeyBase64);
+        // First, decrypt the KEK using the master key
+        byte[] kek = decryptKekWithMasterKey(encryptedKekBase64);
+        System.out.println("KEK decrypted with master key");
 
         // Extract IV and ciphertext
-        byte[] iv = Arrays.copyOfRange(envelopeEncryptedData, 0, IV_LENGTH);
-        byte[] ciphertext = Arrays.copyOfRange(envelopeEncryptedData, IV_LENGTH, envelopeEncryptedData.length);
+        byte[] iv = Arrays.copyOfRange(kekEncryptedData, 0, IV_LENGTH);
+        byte[] ciphertext = Arrays.copyOfRange(kekEncryptedData, IV_LENGTH, kekEncryptedData.length);
 
-        // Decrypt data
-        SecretKey key = new SecretKeySpec(dataKey, "AES");
+        // Decrypt data with KEK
+        SecretKey key = new SecretKeySpec(kek, "AES");
         Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
         GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
         cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
@@ -273,19 +342,137 @@ public class CryptoService {
         byte[] decryptedData = cipher.doFinal(ciphertext);
 
         // Clear sensitive data
-        Arrays.fill(dataKey, (byte) 0);
+        Arrays.fill(kek, (byte) 0);
 
         return decryptedData;
     }
 
     /**
-     * Generates a new master key (for initial setup).
-     * Returns base64-encoded 256-bit key.
+     * Verifies and decrypts data from Angular frontend using streaming.
+     * Writes decrypted data directly to output stream without loading all in memory.
+     *
+     * @param inputStream The input stream with encrypted data from Angular
+     * @param outputStream The output stream to write decrypted data to
+     * @return StreamingDecryptionResult with size and verification status
      */
-    public static String generateMasterKey() {
-        SecureRandom random = new SecureRandom();
-        byte[] key = new byte[32]; // 256 bits
-        random.nextBytes(key);
-        return Base64.getEncoder().encodeToString(key);
+    public StreamingDecryptionResult verifyAndDecryptStreaming(InputStream inputStream, OutputStream outputStream)
+            throws GeneralSecurityException, IOException {
+
+        System.out.println("Starting streaming verification and decryption...");
+
+        // Read salt and IV from the beginning of the stream
+        byte[] salt = new byte[SALT_LENGTH];
+        byte[] iv = new byte[IV_LENGTH];
+
+        int saltRead = inputStream.readNBytes(salt, 0, SALT_LENGTH);
+        int ivRead = inputStream.readNBytes(iv, 0, IV_LENGTH);
+
+        if (saltRead < SALT_LENGTH || ivRead < IV_LENGTH) {
+            throw new IllegalArgumentException("Invalid encrypted data: too short");
+        }
+
+        System.out.println("Extracted - Salt: " + SALT_LENGTH + " bytes, IV: " + IV_LENGTH + " bytes");
+
+        // Derive key from passphrase
+        SecretKey key = deriveKeyFromPassphrase(appPassphrase, salt);
+
+        // Initialize cipher for decryption
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
+
+        // Stream decryption in chunks
+        byte[] buffer = new byte[8192]; // 8KB buffer
+        long totalDecrypted = 0;
+        int bytesRead;
+        boolean verified = false;
+
+        try {
+            System.out.println("Decrypting in streaming mode...");
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                byte[] decryptedChunk = cipher.update(buffer, 0, bytesRead);
+                if (decryptedChunk != null && decryptedChunk.length > 0) {
+                    outputStream.write(decryptedChunk);
+                    totalDecrypted += decryptedChunk.length;
+                }
+            }
+
+            // Finalize decryption (handles GCM tag verification)
+            byte[] finalChunk = cipher.doFinal();
+            if (finalChunk != null && finalChunk.length > 0) {
+                outputStream.write(finalChunk);
+                totalDecrypted += finalChunk.length;
+            }
+
+            verified = true;
+            System.out.println("✓ Streaming decryption successful! Total decrypted: " + totalDecrypted + " bytes");
+        } catch (Exception e) {
+            System.err.println("✗ Streaming decryption failed: " + e.getMessage());
+            throw new GeneralSecurityException("Failed to decrypt and verify data: " + e.getMessage(), e);
+        } finally {
+            Arrays.fill(buffer, (byte) 0);
+        }
+
+        return new StreamingDecryptionResult(totalDecrypted, verified);
+    }
+
+    /**
+     * Encrypts plaintext data with a randomly generated DEK using streaming.
+     * Reads from input stream and writes encrypted data to output stream.
+     * Does NOT perform envelope encryption - that's done separately with createEnvelopeDek().
+     *
+     * @param inputStream The input stream with plaintext data
+     * @param outputStream The output stream to write DEK-encrypted data to
+     * @return StreamingDataEncryptionResult with plaintext DEK and encrypted size
+     */
+    public StreamingDataEncryptionResult encryptWithDekStreaming(InputStream inputStream, OutputStream outputStream)
+            throws GeneralSecurityException, IOException {
+
+        System.out.println("Starting streaming data encryption with DEK...");
+
+        // Generate a new random DEK (Data Encryption Key) for this file
+        byte[] dek = new byte[32]; // 256 bits for AES-256
+        secureRandom.nextBytes(dek);
+        System.out.println("Generated new DEK (Data Encryption Key): 32 bytes");
+
+        // Generate random IV for DEK encryption
+        byte[] iv = new byte[IV_LENGTH];
+        secureRandom.nextBytes(iv);
+
+        // Write IV to output stream first
+        outputStream.write(iv);
+        long totalEncrypted = iv.length;
+
+        // Initialize cipher for encryption
+        SecretKey key = new SecretKeySpec(dek, "AES");
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
+
+        // Stream encryption in chunks
+        byte[] buffer = new byte[8192]; // 8KB buffer
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            byte[] encryptedChunk = cipher.update(buffer, 0, bytesRead);
+            if (encryptedChunk != null && encryptedChunk.length > 0) {
+                outputStream.write(encryptedChunk);
+                totalEncrypted += encryptedChunk.length;
+            }
+        }
+
+        // Finalize encryption (includes GCM tag)
+        byte[] finalChunk = cipher.doFinal();
+        if (finalChunk != null && finalChunk.length > 0) {
+            outputStream.write(finalChunk);
+            totalEncrypted += finalChunk.length;
+        }
+
+        System.out.println("DEK streaming encryption complete. Size: " + totalEncrypted + " bytes");
+
+        // Clear buffer from memory
+        Arrays.fill(buffer, (byte) 0);
+
+        return new StreamingDataEncryptionResult(dek, totalEncrypted);
     }
 }
