@@ -6,14 +6,17 @@ services:
     image: localstack/localstack:latest
     container_name: quarks-tigris-localstack
     ports:
-      - "4566:4566"      # LocalStack Gateway
+      - "${LOCALSTACK_PORT:-4566}:4566"      # LocalStack Gateway
       - "4510-4559:4510-4559"  # External services port range
     environment:
       - SERVICES=s3
-      - DEBUG=1
+      - DEBUG=${LOCALSTACK_DEBUG:-1}
       - DATA_DIR=/tmp/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock
       - PERSISTENCE=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}
     volumes:
       - "./localstack-data:/tmp/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -25,15 +28,18 @@ services:
       timeout: 5s
       retries: 5
 
-  # NATS JetStream - Message broker (for future use)
+  # NATS JetStream - Message broker
   nats:
     image: nats:latest
     container_name: quarks-tigris-nats
-    command: "-js -sd /data"
+    command: "-js -sd /data -m 8222 --user guest --pass guest"
     ports:
-      - "4222:4222"      # Client connections
-      - "8222:8222"      # HTTP management
-      - "6222:6222"      # Cluster connections
+      - "${NATS_PORT:-4222}:4222"      # Client connections
+      - "${NATS_HTTP_PORT:-8222}:8222" # HTTP management
+      - "${NATS_CLUSTER_PORT:-6222}:6222" # Cluster connections
+    environment:
+      - NATS_URL=nats://guest:guest@nats:4222
+      - NATS_JETSTREAM_ENABLED=true
     volumes:
       - "./nats-data:/data"
     networks:
@@ -52,16 +58,17 @@ services:
       localstack:
         condition: service_healthy
     environment:
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-whisper-uploads}
     entrypoint: /bin/sh
     command: >
       -c "
       echo 'Waiting for LocalStack to be ready...';
       sleep 5;
-      echo 'Creating S3 bucket...';
-      aws --endpoint-url=http://localstack:4566 s3 mb s3://whisper-uploads || true;
+      echo 'Creating S3 bucket: ${S3_BUCKET_NAME:-whisper-uploads}';
+      aws --endpoint-url=http://localstack:4566 s3 mb s3://${S3_BUCKET_NAME:-whisper-uploads} || true;
       echo 'Listing buckets:';
       aws --endpoint-url=http://localstack:4566 s3 ls;
       echo 'S3 initialization complete!';
