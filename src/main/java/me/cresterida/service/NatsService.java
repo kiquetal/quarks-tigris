@@ -7,6 +7,8 @@ import me.cresterida.dto.FileUploadEvent;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * Service for publishing file upload events to NATS JetStream.
  *
@@ -43,13 +45,23 @@ public class NatsService {
             System.out.println("  Bucket: " + event.bucketName);
             System.out.println("=".repeat(80));
 
-            // Send to NATS JetStream
-            fileUploadEmitter.send(eventJson);
-
-            System.out.println("✓ Event published to NATS successfully");
+            // Send to NATS JetStream (async) and handle completion
+            fileUploadEmitter.send(eventJson)
+                .whenComplete((result, error) -> {
+                    if (error != null) {
+                        System.err.println("✗ Failed to publish event to NATS: " + error.getMessage());
+                        System.err.println("  Event ID: " + event.eventId);
+                        System.err.println("  This is expected if NATS server is not running");
+                        error.printStackTrace();
+                    } else {
+                        System.out.println("✓ Event published to NATS successfully");
+                        System.out.println("  Event ID: " + event.eventId);
+                    }
+                });
 
         } catch (Exception e) {
-            System.err.println("✗ Failed to publish event to NATS: " + e.getMessage());
+            // This catches JSON serialization errors
+            System.err.println("✗ Failed to serialize event for NATS: " + e.getMessage());
             e.printStackTrace();
             // Don't throw - uploading to S3 should succeed even if NATS fails
         }
