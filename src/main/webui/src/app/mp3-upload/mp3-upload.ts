@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 import { ApiService } from '../api.service';
 import { EncryptionService } from '../encryption.service';
 import { AuthService } from '../auth.service';
@@ -22,7 +23,8 @@ export class Mp3Upload {
     private apiService: ApiService,
     private encryptionService: EncryptionService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   onFileSelected(event: any) {
@@ -35,6 +37,15 @@ export class Mp3Upload {
         sizeInMB: (this.selectedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
         type: this.selectedFile.type
       });
+    }
+  }
+
+  resetForm() {
+    this.selectedFile = null;
+    this.email = '';
+    this.isEncrypting = false;
+    if (this.fileInput) {
+      this.fileInput.value = '';
     }
   }
 
@@ -54,57 +65,71 @@ export class Mp3Upload {
       try {
         // Encrypt the file
         this.isEncrypting = true;
+        this.cdr.detectChanges(); // Force UI update
+
         const encryptedFile = await this.encryptionService.encryptFile(this.selectedFile, passphrase);
         console.log('Encryption complete. Encrypted size:', encryptedFile.size, 'bytes');
 
         // Upload the encrypted file
-        this.apiService.uploadFile(encryptedFile, this.email).subscribe({
+        this.apiService.uploadFile(encryptedFile, this.email)
+          .pipe(
+            finalize(() => {
+              // This always runs, whether success or error
+              this.isEncrypting = false;
+              this.cdr.detectChanges(); // Force UI update
+              console.log('Upload finished, isEncrypting set to false');
+            })
+          )
+          .subscribe({
           next: (res) => {
-            this.isEncrypting = false;
             console.log('Upload successful:', res);
             alert('File uploaded successfully!');
 
-            // Clear the form
-            this.selectedFile = null;
-            this.email = '';
-            if (this.fileInput) {
-              this.fileInput.value = '';
-            }
-            
+            // Clear the form completely
+            this.resetForm();
+
             // Redirect to index
             this.router.navigate(['/']);
           },
           error: (err: HttpErrorResponse) => {
-            this.isEncrypting = false;
             console.error('Upload failed:', err);
             console.log('Error status:', err.status);
             console.log('Error status text:', err.statusText);
             console.log('Error body:', err.error);
 
+            // Determine error message
+            let errorMessage = 'Upload failed. Please try again.';
+
             if (err.status === 403) {
-              // 403 Forbidden - unauthorized
-              alert('You are not authorized to upload files.');
+              errorMessage = 'You are not authorized to upload files.';
             } else if (err.status === 413) {
-              // 413 Payload Too Large
-              alert('File is too large. Please select a smaller file.');
+              errorMessage = 'File is too large. Please select a smaller file.';
             } else if (err.status >= 500) {
-              // 5xx - Server error
-              alert('Server error. Please try again later.');
+              errorMessage = 'Server error. Please try again later.';
             } else if (err.status === 0) {
-              // Network error
-              alert('Cannot connect to server. Please check your connection.');
+              errorMessage = 'Cannot connect to server. Please check your connection.';
             } else if (err.status >= 400 && err.status < 500) {
-              // Other client errors (4xx)
-              alert('Upload failed: ' + (err.error?.message || 'Invalid request'));
-            } else {
-              alert('Upload failed. Please try again.');
+              errorMessage = 'Upload failed: ' + (err.error?.message || 'Invalid request');
+            }
+
+            alert(errorMessage);
+
+            // Reset file input to allow re-selection
+            if (this.fileInput) {
+              this.fileInput.value = '';
             }
           },
         });
       } catch (error) {
         this.isEncrypting = false;
+        this.cdr.detectChanges(); // Force UI update
         console.error('Encryption failed:', error);
         alert('Failed to encrypt file. Please try again.');
+
+        // Reset file input to allow re-selection
+        if (this.fileInput) {
+          this.fileInput.value = '';
+        }
       }
     } else {
       console.warn('No file selected or email missing');
