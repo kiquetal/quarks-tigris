@@ -10,8 +10,8 @@ import org.eclipse.microprofile.reactive.messaging.Emitter;
 /**
  * Service for publishing file upload events to NATS JetStream.
  *
- * Publishes metadata about uploaded files so downstream services (e.g., F# processing service)
- * can consume these events and download the encrypted files for processing.
+ * Publishes minimal metadata (S3 location) about uploaded files so downstream services
+ * (e.g., F# processing service) can download the full metadata and encrypted files from S3.
  */
 @ApplicationScoped
 public class NatsService {
@@ -25,8 +25,9 @@ public class NatsService {
 
     /**
      * Publishes a file upload event to NATS JetStream.
+     * Contains only S3 location info - consumer can download full metadata from S3.
      *
-     * @param event The file upload event containing S3 location and metadata
+     * @param event The file upload event containing S3 location
      */
     public void publishFileUploadEvent(FileUploadEvent event) {
         try {
@@ -37,7 +38,6 @@ public class NatsService {
             System.out.println("  Event ID: " + event.eventId);
             System.out.println("  File UUID: " + event.fileUuid);
             System.out.println("  Email: " + event.email);
-            System.out.println("  Original Filename: " + event.originalFilename);
             System.out.println("  S3 Data Key: " + event.s3DataKey);
             System.out.println("  S3 Metadata Key: " + event.s3MetadataKey);
             System.out.println("  Bucket: " + event.bucketName);
@@ -56,27 +56,19 @@ public class NatsService {
     }
 
     /**
-     * Publishes a file upload event with all details.
+     * Publishes a file upload event with S3 location.
      *
      * @param email User email
      * @param fileUuid File UUID
-     * @param originalFilename Original filename
-     * @param originalSize Original file size
-     * @param encryptedSize Encrypted file size
      * @param s3DataKey S3 key for encrypted data
-     * @param s3MetadataKey S3 key for metadata JSON
+     * @param s3MetadataKey S3 key for metadata JSON (contains all file details)
      * @param bucketName S3 bucket name
-     * @param verified Whether the upload was verified
      */
-    public void publishFileUpload(String email, String fileUuid, String originalFilename,
-                                   long originalSize, long encryptedSize,
-                                   String s3DataKey, String s3MetadataKey, String bucketName,
-                                   boolean verified) {
+    public void publishFileUpload(String email, String fileUuid,
+                                   String s3DataKey, String s3MetadataKey,
+                                   String bucketName) {
         FileUploadEvent event = new FileUploadEvent(
-            email, fileUuid, originalFilename,
-            originalSize, encryptedSize,
-            s3DataKey, s3MetadataKey, bucketName,
-            verified
+            email, fileUuid, s3DataKey, s3MetadataKey, bucketName
         );
 
         publishFileUploadEvent(event);

@@ -148,8 +148,8 @@ public class FileUploadResource {
                         );
 
                         // Publish event to NATS for downstream processing
-                        // Using metadata object which already has all the file information
-                        publishToNats(email, fileId, metadata, uploadResult);
+                        // Only S3 location - consumer downloads full metadata.json
+                        publishToNats(email, fileId, uploadResult);
 
                         System.out.println("=".repeat(80));
 
@@ -188,27 +188,22 @@ public class FileUploadResource {
 
     /**
      * Publishes file upload event to NATS for downstream processing.
-     * Uses the EnvelopeMetadata which already contains all necessary information
-     * including file sizes, verification status, and original filename.
+     * Only publishes S3 location (data key, metadata key, bucket).
+     * Consumer can download the full metadata.json from S3 to get all file details.
      *
      * @param email User email
      * @param fileId File UUID
-     * @param metadata Envelope metadata with file information
      * @param uploadResult S3 upload result with keys
      */
-    private void publishToNats(String email, String fileId, EnvelopeMetadata metadata,
+    private void publishToNats(String email, String fileId,
                                S3StorageService.UploadResult uploadResult) {
         try {
             natsService.publishFileUpload(
                 email,
                 fileId,
-                metadata.originalFilename,
-                metadata.originalSize,
-                metadata.encryptedSize,
                 uploadResult.dataKey,
                 uploadResult.metadataKey,
-                s3StorageService.getBucketName(),
-                "VERIFIED".equals(metadata.verificationStatus)
+                s3StorageService.getBucketName()
             );
         } catch (Exception e) {
             // Log but don't fail upload if NATS publish fails
