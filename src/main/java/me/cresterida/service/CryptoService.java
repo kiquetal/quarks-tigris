@@ -186,20 +186,21 @@ public class CryptoService {
     public String createEnvelopeDek(byte[] dek) throws GeneralSecurityException {
         System.out.println("Creating envelope: encrypting DEK with master key...");
 
-        String encryptedDek = encryptKekWithMasterKey(dek);
+        String encryptedDek = encryptDekWithMasterKey(dek);
 
         System.out.println("DEK encrypted with master key for storage");
         return encryptedDek;
     }
 
     /**
-     * Encrypts a KEK (Key Encryption Key) with the master key.
-     * This is the core of envelope encryption - the KEK is encrypted before storage.
+     * Encrypts a DEK (Data Encryption Key) with the master key.
+     * This is the core of envelope encryption - the DEK is encrypted before storage.
+     * The encrypted result becomes the KEK (Key Encryption Key) stored in metadata.
      *
-     * @param kek The KEK to encrypt (32 bytes)
-     * @return Base64-encoded encrypted KEK (format: [12 bytes IV][encrypted KEK + GCM tag])
+     * @param dek The DEK to encrypt (32 bytes)
+     * @return Base64-encoded encrypted DEK/KEK (format: [12 bytes IV][encrypted DEK + GCM tag])
      */
-    private String encryptKekWithMasterKey(byte[] kek) throws GeneralSecurityException {
+    private String encryptDekWithMasterKey(byte[] dek) throws GeneralSecurityException {
         // Decode the master key
         byte[] masterKey = Base64.getDecoder().decode(masterKeyBase64);
 
@@ -207,18 +208,18 @@ public class CryptoService {
         byte[] iv = new byte[IV_LENGTH];
         secureRandom.nextBytes(iv);
 
-        // Encrypt the KEK with the master key
+        // Encrypt the DEK with the master key
         SecretKey masterSecretKey = new SecretKeySpec(masterKey, "AES");
         Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
         GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
         cipher.init(Cipher.ENCRYPT_MODE, masterSecretKey, gcmSpec);
 
-        byte[] encryptedKek = cipher.doFinal(kek);
+        byte[] encryptedDek = cipher.doFinal(dek);
 
-        // Combine IV + encrypted KEK
-        ByteBuffer buffer = ByteBuffer.allocate(iv.length + encryptedKek.length);
+        // Combine IV + encrypted DEK
+        ByteBuffer buffer = ByteBuffer.allocate(iv.length + encryptedDek.length);
         buffer.put(iv);
-        buffer.put(encryptedKek);
+        buffer.put(encryptedDek);
 
         // Clear sensitive data
         Arrays.fill(masterKey, (byte) 0);
