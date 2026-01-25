@@ -4,6 +4,66 @@
 
 This document contains common NATS CLI commands for managing the FILE_UPLOADS stream.
 
+## Programmatic Stream Creation
+
+The application **automatically creates** the `FILE_UPLOADS` stream on startup using the `NatsService` class.
+
+### How It Works
+
+1. On application startup, `NatsService.createStreamIfNotExists()` is called
+2. It connects to NATS server using the configured URL and credentials
+3. Checks if the `FILE_UPLOADS` stream already exists
+4. If not, creates it with the following configuration:
+   - **Stream Name**: `FILE_UPLOADS`
+   - **Subject**: `file.uploads`
+   - **Storage**: File-based
+   - **Retention Policy**: Limits (old messages deleted)
+   - **Max Age**: 7 days
+   - **Credentials**: `guest:guest` (DevServices default)
+
+### Startup Logs
+
+You should see logs like this on startup:
+
+```
+🔧 Attempting to create NATS stream...
+   Connecting to: nats://localhost:32871
+   ✓ Connected to NATS server
+   Stream FILE_UPLOADS does not exist, creating...
+   ✅ Stream FILE_UPLOADS created successfully!
+     Name: FILE_UPLOADS
+     Subjects: [file.uploads]
+     Storage: File
+     Max Age: PT168H
+   ✓ NATS connection closed
+```
+
+Or if the stream already exists:
+
+```
+🔧 Attempting to create NATS stream...
+   Connecting to: nats://localhost:32871
+   ✓ Connected to NATS server
+   ✓ Stream FILE_UPLOADS already exists
+     Messages: 0
+     Subjects: [file.uploads]
+   ✓ NATS connection closed
+```
+
+### Benefits
+
+- **No manual setup required** - stream is created automatically
+- **Idempotent** - safe to run multiple times, won't fail if stream exists
+- **Fail-safe** - application continues even if NATS is not available
+- **DevServices friendly** - works with Quarkus NATS DevServices
+
+### Code Location
+
+The stream creation code is in:
+- **File**: `src/main/java/me/cresterida/service/NatsService.java`
+- **Method**: `createStreamIfNotExists()`
+- **Called from**: `onStart()` startup event observer
+
 ## Configuration
 
 - **NATS Server**: `nats://localhost:32871`

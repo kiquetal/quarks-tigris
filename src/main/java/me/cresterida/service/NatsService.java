@@ -10,6 +10,16 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 
+import io.nats.client.Connection;
+import io.nats.client.Nats;
+import io.nats.client.Options;
+import io.nats.client.JetStreamManagement;
+import io.nats.client.api.StreamConfiguration;
+import io.nats.client.api.StorageType;
+import io.nats.client.api.RetentionPolicy;
+import io.nats.client.api.StreamInfo;
+
+import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.Optional;
 
@@ -53,6 +63,9 @@ public class NatsService {
         System.out.println("  Stream: FILE_UPLOADS");
         System.out.println("=".repeat(80) + "\n");
 
+        // Create the stream programmatically
+        createStreamIfNotExists();
+
         // Send a simple test message to verify NATS connection
         // NOTE: Disabled automatic test - use /api/nats-test/publish endpoint instead
         // This prevents errors on startup before the stream is created
@@ -89,6 +102,77 @@ public class NatsService {
             System.err.println("❌ TEST FAILED - Exception during test message:");
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Creates the FILE_UPLOADS stream programmatically if it doesn't exist.
+     * This is necessary because DevServices doesn't auto-create streams.
+     */
+    private void createStreamIfNotExists() {
+        Connection nc = null;
+        try {
+            // Determine NATS URL
+            String natsUrl = natsServers.orElse("nats://localhost:" + devServicesPort.orElse(4222));
+
+            System.out.println("🔧 Attempting to create NATS stream...");
+            System.out.println("   Connecting to: " + natsUrl);
+
+            // Connect to NATS with authentication if needed
+            Options options = new Options.Builder()
+                .server(natsUrl)
+                .connectionTimeout(Duration.ofSeconds(5))
+                .userInfo("guest", "guest")  // DevServices default credentials
+                .build();
+
+            nc = Nats.connect(options);
+            System.out.println("   ✓ Connected to NATS server");
+
+            // Get JetStream management context
+            JetStreamManagement jsm = nc.jetStreamManagement();
+
+            // Check if stream already exists
+            try {
+                StreamInfo streamInfo = jsm.getStreamInfo("FILE_UPLOADS");
+                System.out.println("   ✓ Stream FILE_UPLOADS already exists");
+                System.out.println("     Messages: " + streamInfo.getStreamState().getMsgCount());
+                System.out.println("     Subjects: " + streamInfo.getConfiguration().getSubjects());
+            } catch (Exception e) {
+                // Stream doesn't exist, create it
+                System.out.println("   Stream FILE_UPLOADS does not exist, creating...");
+
+                StreamConfiguration streamConfig = StreamConfiguration.builder()
+                    .name("FILE_UPLOADS")
+                    .subjects("file.uploads")
+                    .storageType(StorageType.File)
+                    .retentionPolicy(RetentionPolicy.Limits)
+                    .maxAge(Duration.ofDays(7))
+                    .build();
+
+                StreamInfo streamInfo = jsm.addStream(streamConfig);
+                System.out.println("   ✅ Stream FILE_UPLOADS created successfully!");
+                System.out.println("     Name: " + streamInfo.getConfiguration().getName());
+                System.out.println("     Subjects: " + streamInfo.getConfiguration().getSubjects());
+                System.out.println("     Storage: " + streamInfo.getConfiguration().getStorageType());
+                System.out.println("     Max Age: " + streamInfo.getConfiguration().getMaxAge());
+            }
+
+        } catch (Exception e) {
+            System.err.println("   ⚠️  Failed to create/verify NATS stream: " + e.getMessage());
+            System.err.println("   This is expected if NATS server is not running or JetStream is not enabled");
+            System.err.println("   Application will continue, but NATS publishing will fail");
+            e.printStackTrace();
+        } finally {
+            // Close connection
+            if (nc != null) {
+                try {
+                    nc.close();
+                    System.out.println("   ✓ NATS connection closed");
+                } catch (Exception e) {
+                    System.err.println("   ⚠️  Error closing NATS connection: " + e.getMessage());
+                }
+            }
+        }
+        System.out.println("=".repeat(80) + "\n");
     }
 
     private String getNatsUrl() {
