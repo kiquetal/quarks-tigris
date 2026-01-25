@@ -7,6 +7,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.inject.Inject;
+import me.cresterida.service.NatsService;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -23,8 +24,11 @@ import me.cresterida.model.EnvelopeMetadata;
 import me.cresterida.service.CryptoService;
 import me.cresterida.util.S3StorageService;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.UUID;
 
 @Path("/api")
@@ -39,6 +43,9 @@ public class FileUploadResource {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    NatsService natsService;
 
 
     @POST
@@ -100,8 +107,8 @@ public class FileUploadResource {
                     System.out.println("Decrypted size: " + decryptResult.size + " bytes");
 
                     // Step 2: Encrypt the decrypted data using DEK (streaming)
-                    try (java.io.FileInputStream decryptedInput = new java.io.FileInputStream(tempDecrypted.toFile());
-                         java.io.FileOutputStream dekEncryptedOutput = new java.io.FileOutputStream(tempEncrypted.toFile())) {
+                    try (FileInputStream decryptedInput = new FileInputStream(tempDecrypted.toFile());
+                         FileOutputStream dekEncryptedOutput = new FileOutputStream(tempEncrypted.toFile())) {
 
                         CryptoService.StreamingDataEncryptionResult dekResult =
                             cryptoService.encryptWithDekStreaming(decryptedInput, dekEncryptedOutput);
@@ -113,7 +120,7 @@ public class FileUploadResource {
                         System.out.println("Envelope created: DEK encrypted with master key");
 
                         // Clear the plaintext DEK from memory
-                        java.util.Arrays.fill(dekResult.dek, (byte) 0);
+                        Arrays.fill(dekResult.dek, (byte) 0);
 
                         // Create envelope metadata (with the encrypted DEK)
                         EnvelopeMetadata metadata = new EnvelopeMetadata(
@@ -139,6 +146,10 @@ public class FileUploadResource {
                             dekResult.encryptedSize,
                             metadataJson
                         );
+
+                        // Publish event to NATS for downstream processing
+                        // Using metadata object which already has all the file information
+                        publishToNats(email, fileId, metadata, uploadResult);
 
                         System.out.println("=".repeat(80));
 
@@ -172,6 +183,36 @@ public class FileUploadResource {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to process encrypted file: " + e.getMessage()))
                     .build();
+        }
+    }
+
+    /**
+     * Publishes file upload event to NATS for downstream processing.
+     * Uses the EnvelopeMetadata which already contains all necessary information
+     * including file sizes, verification status, and original filename.
+     *
+     * @param email User email
+     * @param fileId File UUID
+     * @param metadata Envelope metadata with file information
+     * @param uploadResult S3 upload result with keys
+     */
+    private void publishToNats(String email, String fileId, EnvelopeMetadata metadata,
+                               S3StorageService.UploadResult uploadResult) {
+        try {
+            natsService.publishFileUpload(
+                email,
+                fileId,
+                metadata.originalFilename,
+                metadata.originalSize,
+                metadata.encryptedSize,
+                uploadResult.dataKey,
+                uploadResult.metadataKey,
+                s3StorageService.getBucketName(),
+                "VERIFIED".equals(metadata.verificationStatus)
+            );
+        } catch (Exception e) {
+            // Log but don't fail upload if NATS publish fails
+            System.err.println("⚠ Warning: Failed to publish to NATS: " + e.getMessage());
         }
     }
 
