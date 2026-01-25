@@ -2,12 +2,16 @@ package me.cresterida.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import io.quarkus.runtime.StartupEvent;
 import me.cresterida.dto.FileUploadEvent;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 
 import java.util.concurrent.CompletionStage;
+import java.util.Optional;
 
 /**
  * Service for publishing file upload events to NATS JetStream.
@@ -24,6 +28,78 @@ public class NatsService {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @ConfigProperty(name = "quarkus.messaging.nats.devservices.enabled")
+    Optional<Boolean> devServicesEnabled;
+
+    @ConfigProperty(name = "quarkus.messaging.nats.devservices.port")
+    Optional<Integer> devServicesPort;
+
+    @ConfigProperty(name = "quarkus.messaging.nats.connection.servers")
+    Optional<String> natsServers;
+
+    /**
+     * Logs NATS configuration on startup and sends a test message
+     */
+    void onStart(@Observes StartupEvent ev) {
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("NATS Configuration on Startup:");
+        System.out.println("  DevServices Enabled: " + devServicesEnabled.orElse(false));
+        System.out.println("  DevServices Port: " + devServicesPort.map(String::valueOf).orElse("default"));
+        System.out.println("  Connection Servers: " + natsServers.orElse("NOT CONFIGURED - using DevServices"));
+        System.out.println("  Expected NATS URL: " + getNatsUrl());
+        System.out.println("  Channel: file-uploads");
+        System.out.println("  Subject: file.uploads");
+        System.out.println("  Stream: FILE_UPLOADS");
+        System.out.println("=".repeat(80) + "\n");
+
+        // Send a simple test message to verify NATS connection
+        // NOTE: Disabled automatic test - use /api/nats-test/publish endpoint instead
+        // This prevents errors on startup before the stream is created
+        // sendTestMessage();
+    }
+
+    /**
+     * Sends a simple test message to verify NATS is working
+     */
+    private void sendTestMessage() {
+        try {
+            String testJson = "{\"test\":\"message\",\"timestamp\":" + System.currentTimeMillis() + ",\"status\":\"startup_test\"}";
+
+            System.out.println("📤 Sending test message to NATS...");
+            System.out.println("   Test JSON: " + testJson);
+
+            fileUploadEmitter.send(testJson)
+                .whenComplete((result, error) -> {
+                    if (error != null) {
+                        System.err.println("❌ TEST FAILED - Cannot connect to NATS!");
+                        System.err.println("   Error: " + error.getMessage());
+                        System.err.println("   Possible causes:");
+                        System.err.println("   - NATS server not running");
+                        System.err.println("   - Wrong port configuration");
+                        System.err.println("   - JetStream not enabled (need -js flag)");
+                        System.err.println("   - Stream FILE_UPLOADS doesn't exist");
+                        error.printStackTrace();
+                    } else {
+                        System.out.println("✅ TEST SUCCESS - NATS connection working!");
+                        System.out.println("   Message published successfully to file.uploads");
+                    }
+                });
+        } catch (Exception e) {
+            System.err.println("❌ TEST FAILED - Exception during test message:");
+            e.printStackTrace();
+        }
+    }
+
+    private String getNatsUrl() {
+        if (natsServers.isPresent()) {
+            return natsServers.get();
+        } else if (devServicesEnabled.orElse(false)) {
+            int port = devServicesPort.orElse(4222);
+            return "nats://localhost:" + port + " (DevServices will auto-configure actual port)";
+        }
+        return "UNKNOWN - Check NATS configuration!";
+    }
 
     /**
      * Publishes a file upload event to NATS JetStream.
