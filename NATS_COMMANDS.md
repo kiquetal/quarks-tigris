@@ -192,11 +192,200 @@ nats stream rm FILE_UPLOADS \
   --force
 ```
 
-## Consumer Management
+## Durable Consumer Management
 
-### Create Consumer
+### Quick Start for .NET Developers
+
+**TL;DR - Create a consumer for your .NET client:**
 
 ```bash
+# 1. Create the durable pull consumer
+nats consumer add FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --pull \
+  --deliver all \
+  --max-deliver=-1 \
+  --max-pending=100 \
+  --wait=30s
+
+# 2. Verify it was created
+nats consumer info FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222
+
+# 3. Test fetching a message
+nats consumer next FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222 \
+  --count 1
+```
+
+**Connection details for your .NET app:**
+- **URL**: `nats://localhost:4222` (or `32871` if using DevServices)
+- **User**: `guest`
+- **Password**: `guest`
+- **Stream**: `FILE_UPLOADS`
+- **Consumer**: `file_processor`
+- **Subject**: `file.uploads`
+
+### Why Durable Consumers?
+
+Durable consumers are essential for:
+- **Message Persistence**: Consumer state survives restarts
+- **Guaranteed Delivery**: Messages are tracked and redelivered if not acknowledged
+- **.NET Client Integration**: Required for reliable message processing in .NET applications
+- **Load Distribution**: Multiple .NET instances can share work using the same consumer
+
+### Create Durable Consumer for .NET Client
+
+#### Pull-Based Consumer (Recommended for .NET)
+
+Pull-based consumers give your .NET application full control over when to fetch messages.
+
+```bash
+nats consumer add FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --pull \
+  --deliver all \
+  --max-deliver=-1 \
+  --max-pending=100 \
+  --wait=30s \
+  --replay instant \
+  --max-ack-pending=100
+```
+
+**Configuration Explained:**
+- `FILE_UPLOADS` - Stream name
+- `file_processor` - Durable consumer name (must be unique)
+- `--filter "file.uploads"` - Only receive messages matching this subject
+- `--ack explicit` - Messages must be manually acknowledged
+- `--pull` - Pull-based consumer (client requests messages)
+- `--deliver all` - Deliver all messages from the start
+- `--max-deliver=-1` - Unlimited redelivery attempts
+- `--max-pending=100` - Max unacknowledged messages
+- `--wait=30s` - Wait time for acknowledgment
+- `--replay instant` - Replay messages as fast as possible
+- `--max-ack-pending=100` - Max pending acknowledgments
+
+#### Push-Based Consumer (Alternative)
+
+Push consumers automatically deliver messages to your .NET client:
+
+```bash
+nats consumer add FILE_UPLOADS file_processor_push \
+  --server nats://guest:guest@localhost:32871 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --deliver all \
+  --target "file.processor.inbox" \
+  --max-deliver=-1 \
+  --replay instant
+```
+
+### Consumer Variants for Different Use Cases
+
+#### 1. **Work Queue Consumer** (Multiple .NET instances sharing work)
+
+```bash
+nats consumer add FILE_UPLOADS work_queue \
+  --server nats://guest:guest@localhost:32871 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --pull \
+  --deliver all \
+  --max-deliver=3 \
+  --max-pending=10 \
+  --wait=60s \
+  --backoff=5s,10s,30s
+```
+
+This consumer supports:
+- Load balancing across multiple .NET instances
+- Automatic retry with exponential backoff
+- Max 3 delivery attempts before giving up
+
+#### 2. **New Messages Only Consumer** (Process only new uploads)
+
+```bash
+nats consumer add FILE_UPLOADS new_files_only \
+  --server nats://guest:guest@localhost:32871 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --pull \
+  --deliver new \
+  --max-deliver=-1 \
+  --max-pending=50 \
+  --wait=30s
+```
+
+Use `--deliver new` to only receive messages published after consumer creation.
+
+#### 3. **Ordered Consumer** (Strict sequential processing)
+
+```bash
+nats consumer add FILE_UPLOADS ordered_processor \
+  --server nats://guest:guest@localhost:32871 \
+  --filter "file.uploads" \
+  --pull \
+  --deliver all \
+  --replay original \
+  --max-deliver=1 \
+  --flow-control
+```
+
+Guarantees message order for sequential .NET processing.
+
+### List All Consumers
+
+```bash
+nats consumer ls FILE_UPLOADS \
+  --server nats://guest:guest@localhost:32871
+```
+
+### Get Consumer Details
+
+```bash
+nats consumer info FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871
+```
+
+Output includes:
+- Message counts (delivered, acknowledged, pending)
+- Consumer configuration
+- Redelivery statistics
+- Last activity timestamp
+
+### Monitor Consumer Health
+
+```bash
+# Get consumer statistics
+nats consumer report FILE_UPLOADS \
+  --server nats://guest:guest@localhost:32871
+
+# Watch consumer in real-time
+watch -n 2 'nats consumer info FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871'
+```
+
+### Delete Consumer
+
+```bash
+nats consumer rm FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871 \
+  --force
+```
+
+### Reset Consumer Position
+
+If your .NET client needs to reprocess messages:
+
+```bash
+# Delete and recreate consumer
+nats consumer rm FILE_UPLOADS file_processor --force \
+  --server nats://guest:guest@localhost:32871
+
 nats consumer add FILE_UPLOADS file_processor \
   --server nats://guest:guest@localhost:32871 \
   --filter "file.uploads" \
@@ -208,18 +397,98 @@ nats consumer add FILE_UPLOADS file_processor \
   --wait=30s
 ```
 
-### List Consumers
+## .NET Client Integration
 
-```bash
-nats consumer ls FILE_UPLOADS \
-  --server nats://guest:guest@localhost:32871
+### Connection Details for .NET
+
+Your .NET NATS client needs these connection parameters:
+
+```csharp
+// Connection URL
+string natsUrl = "nats://localhost:4222";  // or 32871 for DevServices
+
+// Credentials
+string username = "guest";
+string password = "guest";
+
+// Stream configuration
+string streamName = "FILE_UPLOADS";
+string consumerName = "file_processor";
+string subject = "file.uploads";
 ```
 
-### Consumer Info
+### .NET Consumer Example (Pseudocode)
+
+```csharp
+// 1. Connect to NATS
+var opts = ConnectionFactory.GetDefaultOptions();
+opts.Url = "nats://localhost:4222";
+opts.User = "guest";
+opts.Password = "guest";
+
+var connection = new ConnectionFactory().CreateConnection(opts);
+var jsm = connection.CreateJetStreamManagementContext();
+var js = connection.CreateJetStreamContext();
+
+// 2. Get the durable consumer
+var consumer = js.GetConsumerContext("FILE_UPLOADS", "file_processor");
+
+// 3. Pull messages
+while (true)
+{
+    var messages = consumer.Fetch(10, 5000); // Fetch 10 msgs, 5s timeout
+    
+    foreach (var msg in messages)
+    {
+        try
+        {
+            // Process message
+            ProcessFileUploadEvent(msg.Data);
+            
+            // Acknowledge successful processing
+            msg.Ack();
+        }
+        catch (Exception ex)
+        {
+            // Negative acknowledgment - will be redelivered
+            msg.Nak();
+        }
+    }
+}
+```
+
+### Required .NET NuGet Package
 
 ```bash
-nats consumer info FILE_UPLOADS file_processor \
-  --server nats://guest:guest@localhost:32871
+dotnet add package NATS.Client
+# or
+dotnet add package NATS.Client.JetStream
+```
+
+### Consumer Configuration Best Practices for .NET
+
+1. **Use Pull Consumers**: Better control and error handling
+2. **Set Reasonable Timeouts**: `--wait=30s` to `--wait=60s`
+3. **Limit Pending Messages**: `--max-pending=100` prevents overwhelming your app
+4. **Enable Retries**: `--max-deliver=3` with `--backoff` for transient failures
+5. **Use Explicit Ack**: Always acknowledge messages after successful processing
+6. **Monitor Consumer Lag**: Check pending messages regularly
+
+### Testing Consumer with CLI
+
+Before integrating with .NET, test the consumer:
+
+```bash
+# Subscribe using the durable consumer
+nats consumer next FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871 \
+  --count 1
+
+# Fetch multiple messages
+nats consumer next FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:32871 \
+  --count 10 \
+  --no-wait
 ```
 
 ## Server Information
