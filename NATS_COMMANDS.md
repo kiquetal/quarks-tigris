@@ -208,7 +208,8 @@ nats consumer add FILE_UPLOADS file_processor \
   --deliver all \
   --max-deliver=-1 \
   --max-pending=100 \
-  --wait=30s
+  --wait=30s \
+  --replay instant
 
 # 2. Verify it was created
 nats consumer info FILE_UPLOADS file_processor \
@@ -252,8 +253,7 @@ nats consumer add FILE_UPLOADS file_processor \
   --max-deliver=-1 \
   --max-pending=100 \
   --wait=30s \
-  --replay instant \
-  --max-ack-pending=100
+  --replay instant
 ```
 
 **Configuration Explained:**
@@ -264,10 +264,9 @@ nats consumer add FILE_UPLOADS file_processor \
 - `--pull` - Pull-based consumer (client requests messages)
 - `--deliver all` - Deliver all messages from the start
 - `--max-deliver=-1` - Unlimited redelivery attempts
-- `--max-pending=100` - Max unacknowledged messages
+- `--max-pending=100` - Max unacknowledged messages (controls pending acks)
 - `--wait=30s` - Wait time for acknowledgment
 - `--replay instant` - Replay messages as fast as possible
-- `--max-ack-pending=100` - Max pending acknowledgments
 
 #### Push-Based Consumer (Alternative)
 
@@ -297,13 +296,12 @@ nats consumer add FILE_UPLOADS work_queue \
   --deliver all \
   --max-deliver=3 \
   --max-pending=10 \
-  --wait=60s \
-  --backoff=5s,10s,30s
+  --wait=60s
 ```
 
 This consumer supports:
 - Load balancing across multiple .NET instances
-- Automatic retry with exponential backoff
+- Automatic retry (up to 3 times)
 - Max 3 delivery attempts before giving up
 
 #### 2. **New Messages Only Consumer** (Process only new uploads)
@@ -470,7 +468,7 @@ dotnet add package NATS.Client.JetStream
 1. **Use Pull Consumers**: Better control and error handling
 2. **Set Reasonable Timeouts**: `--wait=30s` to `--wait=60s`
 3. **Limit Pending Messages**: `--max-pending=100` prevents overwhelming your app
-4. **Enable Retries**: `--max-deliver=3` with `--backoff` for transient failures
+4. **Enable Retries**: `--max-deliver=3` for limited retries, or `-1` for unlimited
 5. **Use Explicit Ack**: Always acknowledge messages after successful processing
 6. **Monitor Consumer Lag**: Check pending messages regularly
 
