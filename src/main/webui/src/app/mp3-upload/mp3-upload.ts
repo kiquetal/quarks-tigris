@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -14,7 +14,7 @@ import { AuthService } from '../auth.service';
   templateUrl: './mp3-upload.html',
   styleUrl: './mp3-upload.css',
 })
-export class Mp3Upload {
+export class Mp3Upload implements OnInit {
   selectedFile: File | null = null;
   email = '';
   isEncrypting = false;
@@ -27,6 +27,15 @@ export class Mp3Upload {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  ngOnInit() {
+    // Auto-fill email from sessionStorage (set during login)
+    const storedEmail = sessionStorage.getItem('userEmail');
+    if (storedEmail) {
+      this.email = storedEmail;
+      console.log('Email auto-filled from session:', this.email);
+    }
+  }
 
   onFileSelected(event: any) {
     this.fileInput = event.target;
