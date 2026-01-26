@@ -17,15 +17,38 @@ A Quarkus-based secure file upload service with Angular frontend, featuring enve
 - Java 21+
 - Maven 3.9+
 - Node.js 20+ (for frontend)
-- Docker (optional, for LocalStack)
+- Docker (optional, for LocalStack/NATS)
+- NATS Server with JetStream (for message consumers - F#/.NET/Python/Go)
 
 ### Run in Development Mode
 
+**Option 1: With Quarkus DevServices (Automatic)**
 ```bash
 # Start with hot reload (backend + frontend)
+# NATS and S3 will be started automatically via DevServices
 ./mvnw quarkus:dev
 
 # Or use the convenience script
+./dev-mode.sh
+```
+
+**Option 2: With Docker Compose (Manual)**
+```bash
+# Start NATS JetStream + LocalStack S3
+docker-compose up -d
+
+# Start Quarkus application
+export USE_DEVSERVICES=false
+export S3_ENDPOINT_URL=http://localhost:4566
+./mvnw quarkus:dev
+```
+
+**Option 3: Quick Docker Setup**
+```bash
+# Automated setup script
+./setup-docker.sh
+
+# Then start Quarkus
 ./dev-mode.sh
 ```
 
@@ -33,6 +56,10 @@ Access the application:
 - **Web UI**: http://localhost:8080/whisper
 - **API Docs**: http://localhost:8080/whisper/swagger-ui
 - **Health Check**: http://localhost:8080/whisper/q/health
+
+NATS JetStream (if using docker-compose):
+- **NATS Client**: nats://localhost:4222 (credentials: guest/guest)
+- **NATS Monitoring**: http://localhost:8222
 
 ### Default Passphrase
 ```
@@ -379,6 +406,87 @@ var metadata = await s3Client.GetObjectAsync(
 - Each encryption layer uses unique IVs
 - .NET consumer needs master key to decrypt files
 
+## NATS Consumer Setup (F#/.NET/Python/Go)
+
+The application publishes file upload events to NATS JetStream, enabling you to build consumers in any language.
+
+### Quick Setup for F#/.NET Consumer
+
+**1. Start NATS JetStream:**
+```bash
+# Using docker-compose (recommended)
+docker-compose up -d
+
+# Or use the setup script
+./setup-docker.sh
+```
+
+**2. Create Durable Consumer:**
+```bash
+# Automated script
+./setup-nats-consumer.sh
+
+# Or manually
+nats consumer add FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222 \
+  --filter "file.uploads" \
+  --ack explicit \
+  --pull \
+  --deliver all \
+  --max-deliver=-1 \
+  --max-pending=100 \
+  --wait=30s \
+  --replay instant
+```
+
+**3. Verify Setup:**
+```bash
+# Check consumer status
+nats consumer info FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222
+
+# Test fetching messages
+nats consumer next FILE_UPLOADS file_processor \
+  --server nats://guest:guest@localhost:4222
+```
+
+**4. Build Your F# Consumer:**
+
+See [DOTNET_CONSUMER_SETUP.md](DOTNET_CONSUMER_SETUP.md) for complete code examples.
+
+```fsharp
+// F# example - consume messages from NATS
+let consumeMessages () =
+    use connection = connectionFactory.CreateConnection()
+    let js = connection.CreateJetStreamContext()
+    
+    let consumer = js.GetConsumerContext("FILE_UPLOADS", "file_processor")
+    
+    // Pull messages
+    let messages = consumer.Fetch(10, 5000)
+    
+    for msg in messages do
+        // Deserialize NATS message
+        let fileEvent = JsonSerializer.Deserialize<FileUploadEvent>(msg.Data)
+        
+        // Download from S3 and process
+        processFile fileEvent.s3_data_key fileEvent.s3_metadata_key
+        
+        // Acknowledge
+        msg.Ack()
+```
+
+### Consumer Languages Supported
+
+- ✅ **F#** - Native NATS.Client library
+- ✅ **C#/.NET** - NATS.Client NuGet package
+- ✅ **Python** - nats-py package
+- ✅ **Go** - nats.go library
+- ✅ **Node.js** - nats.js library
+- ✅ **Rust** - async-nats crate
+
+All languages can consume from the same `FILE_UPLOADS` stream and work in parallel!
+
 ## Configuration
 
 ### Environment Variables
@@ -414,9 +522,18 @@ Use the Swagger UI to explore and test all available endpoints with interactive 
 
 ## Documentation
 
+### Getting Started
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup guide
 - **[API_TESTING.md](API_TESTING.md)** - API testing guide with examples
 - **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](ENVELOPE_ENCRYPTION_ARCHITECTURE.md)** - Encryption architecture details
+
+### NATS JetStream Integration (F#/.NET/Python/Go Consumers)
+- **[NATS_COMMANDS.md](NATS_COMMANDS.md)** - NATS CLI commands and durable consumer setup
+- **[DOTNET_CONSUMER_SETUP.md](DOTNET_CONSUMER_SETUP.md)** - Complete .NET/F# consumer guide with code examples
+- **[setup-nats-consumer.sh](setup-nats-consumer.sh)** - Automated consumer creation script
+- **[NATS_INTEGRATION.md](docs/NATS_INTEGRATION.md)** - NATS integration architecture
+
+### Additional Documentation
 - **[docs/archive/](docs/archive/)** - Historical documentation
 
 ## Development
