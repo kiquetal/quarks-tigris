@@ -34,7 +34,13 @@ The application encrypts files client-side before uploading to the server for ad
 
 Successful upload confirmation with file details and verification status.
 
-**4. S3 Storage Structure**
+**4. File List & Management**
+
+![My Files Screen](docs/screenshot/my-files-screen.png)
+
+View all uploaded files with metadata including original filename, file size, upload timestamp, verification status, and options to download or delete each file.
+
+**5. S3 Storage Structure**
 
 ![S3 File Storage](docs/screenshot/s3-files.png)
 
