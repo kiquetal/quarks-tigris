@@ -16,6 +16,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.cresterida.dto.ErrorResponse;
 import me.cresterida.dto.PassphraseRequest;
@@ -35,6 +37,8 @@ import java.util.UUID;
 @Path("/api")
 @Tag(name = "Whisper API", description = "MP3 file upload and authentication endpoints")
 public class FileUploadResource {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileUploadResource.class);
 
     @Inject
     S3StorageService s3StorageService;
@@ -83,10 +87,10 @@ public class FileUploadResource {
         }
 
         // Log file info
-        System.out.println("=".repeat(80));
-        System.out.println("Uploading encrypted file: " + file.fileName() + " (" + file.size() + " bytes)");
-        System.out.println("Email: " + email);
-        System.out.println("=".repeat(80));
+        logger.info("=".repeat(80));
+        logger.info("Uploading encrypted file: {} ({} bytes)", file.fileName(), file.size());
+        logger.info("Email: {}", email);
+        logger.info("=".repeat(80));
 
         try {
             // Generate S3 keys first
@@ -104,8 +108,8 @@ public class FileUploadResource {
                     CryptoService.StreamingDecryptionResult decryptResult =
                         cryptoService.verifyAndDecryptStreaming(encryptedInput, decryptedOutput);
 
-                    System.out.println("Decryption verification: " + (decryptResult.verified ? "SUCCESS" : "FAILED"));
-                    System.out.println("Decrypted size: " + decryptResult.size + " bytes");
+                    logger.info("Decryption verification: {}", decryptResult.verified ? "SUCCESS" : "FAILED");
+                    logger.debug("Decrypted size: {} bytes", decryptResult.size);
 
                     // Step 2: Encrypt the decrypted data using DEK (streaming)
                     try (FileInputStream decryptedInput = new FileInputStream(tempDecrypted.toFile());
@@ -114,11 +118,11 @@ public class FileUploadResource {
                         CryptoService.StreamingDataEncryptionResult dekResult =
                             cryptoService.encryptWithDekStreaming(decryptedInput, dekEncryptedOutput);
 
-                        System.out.println("DEK encrypted size: " + dekResult.encryptedSize + " bytes");
+                        logger.debug("DEK encrypted size: {} bytes", dekResult.encryptedSize);
 
                         // Step 3: Create envelope by encrypting the DEK with master key
                         String encryptedDek = cryptoService.createEnvelopeDek(dekResult.dek);
-                        System.out.println("Envelope created: DEK encrypted with master key");
+                        logger.debug("Envelope created: DEK encrypted with master key");
 
                         // Clear the plaintext DEK from memory
                         Arrays.fill(dekResult.dek, (byte) 0);
@@ -135,8 +139,7 @@ public class FileUploadResource {
                         // Serialize metadata to JSON
                         String metadataJson = objectMapper.writerWithDefaultPrettyPrinter()
                             .writeValueAsString(metadata);
-                        System.out.println("Created envelope metadata JSON:");
-                        System.out.println(metadataJson);
+                        logger.debug("Created envelope metadata JSON:\n{}", metadataJson);
 
                         // Upload encrypted file and metadata to S3
                         S3StorageService.UploadResult uploadResult = s3StorageService.uploadFileAndMetadata(
@@ -152,7 +155,7 @@ public class FileUploadResource {
                         // Only S3 location - consumer downloads full metadata.json
                         publishToNats(email, fileId, uploadResult);
 
-                        System.out.println("=".repeat(80));
+                        logger.info("=".repeat(80));
 
                         return Response.ok(new UploadResponse(
                             "File uploaded successfully with envelope encryption",
@@ -168,19 +171,17 @@ public class FileUploadResource {
                     Files.deleteIfExists(tempDecrypted);
                     Files.deleteIfExists(tempEncrypted);
                 } catch (IOException e) {
-                    System.err.println("Warning: Failed to delete temporary files: " + e.getMessage());
+                    logger.warn("Failed to delete temporary files: {}", e.getMessage());
                 }
             }
 
         } catch (IOException e) {
-            System.err.println("IO Error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("IO Error: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to read file: " + e.getMessage()))
                     .build();
         } catch (Exception e) {
-            System.err.println("Encryption Error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Encryption Error: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to process encrypted file: " + e.getMessage()))
                     .build();
@@ -208,7 +209,7 @@ public class FileUploadResource {
             );
         } catch (Exception e) {
             // Log but don't fail upload if NATS publish fails
-            System.err.println("⚠ Warning: Failed to publish to NATS: " + e.getMessage());
+            logger.warn("Failed to publish to NATS: {}", e.getMessage(), e);
         }
     }
 
@@ -222,7 +223,7 @@ public class FileUploadResource {
     @Operation(summary = "Validate passphrase", description = "Validate the user's passphrase to allow access to upload functionality")
     @APIResponse(responseCode = "200", description = "Passphrase validation result", content = @Content(schema = @Schema(implementation = PassphraseResponse.class)))
     public Response validatePassphrase(PassphraseRequest request) {
-        System.out.println("🔑 Validating passphrase...");
+        logger.debug("Validating passphrase...");
 
         // Validate passphrase and get email
         String email = sessionManager.validatePassphrase(request.passphrase);
@@ -231,8 +232,8 @@ public class FileUploadResource {
             // Create session
             String sessionToken = sessionManager.createSession(email);
 
-            System.out.println("✅ Passphrase valid for email: " + email);
-            System.out.println("   Session token: " + sessionToken.substring(0, 8) + "...");
+            logger.info("Passphrase valid for email: {}", email);
+            logger.debug("Session token: {}...", sessionToken.substring(0, 8));
 
             PassphraseResponse response = new PassphraseResponse(true);
             response.sessionToken = sessionToken;
@@ -240,7 +241,7 @@ public class FileUploadResource {
 
             return Response.ok(response).build();
         } else {
-            System.out.println("❌ Invalid passphrase");
+            logger.warn("Invalid passphrase attempt");
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(new PassphraseResponse(false)).build();
         }
