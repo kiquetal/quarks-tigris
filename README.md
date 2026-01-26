@@ -8,6 +8,7 @@ A Quarkus-based secure file upload service with Angular frontend, featuring enve
 ✅ **Envelope Encryption** - Server-side re-encryption with random DEK + master key  
 ✅ **Streaming Processing** - Memory-efficient handling of large files  
 ✅ **S3/Tigris Storage** - Scalable object storage  
+✅ **NATS JetStream** - Event-driven architecture with message streaming  
 ✅ **Angular Frontend** - Modern SPA with authentication  
 ✅ **OpenAPI Documentation** - Auto-generated API docs  
 
@@ -598,6 +599,7 @@ npm run build
 - **Backend**: Quarkus 3.30.7, Java 21
 - **Frontend**: Angular 19, TypeScript
 - **Storage**: S3-compatible (Tigris, AWS S3, LocalStack)
+- **Messaging**: NATS JetStream (message streaming & pub/sub)
 - **Encryption**: AES-256-GCM, PBKDF2
 - **API Docs**: OpenAPI/Swagger
 - **Build**: Maven, npm
