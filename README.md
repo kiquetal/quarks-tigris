@@ -537,7 +537,7 @@ Deletes both the encrypted file (`uploads/{email}/{fileId}/{fileName}.enc`) and 
 
 **Frontend Integration**: The Angular frontend provides a user-friendly delete button for each file. On successful deletion, the file immediately disappears from the list with no page refresh required.
 
-See [DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md) for complete implementation details and [API_TESTING.md](API_TESTING.md) for request/response examples.
+See [API_TESTING.md](API_TESTING.md) for request/response examples.
 
 ## Documentation
 
@@ -546,15 +546,9 @@ See [DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md) for comp
 - **[API_TESTING.md](API_TESTING.md)** - API testing guide with examples
 - **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](ENVELOPE_ENCRYPTION_ARCHITECTURE.md)** - Encryption architecture details
 
-### File Operations
-- **[DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md)** - Complete delete functionality documentation
-- **[BUG_FIX_DELETE_EXTENSION.md](docs/BUG_FIX_DELETE_EXTENSION.md)** - File extension bug fix details
-- **[ANGULAR_LIST_UPDATE_FIX.md](docs/ANGULAR_LIST_UPDATE_FIX.md)** - Angular change detection fix for file list
-
 ### NATS JetStream Integration (F#/.NET/Python/Go Consumers)
 - **[NATS_COMMANDS.md](NATS_COMMANDS.md)** - NATS CLI commands and durable consumer setup
 - **[DOTNET_CONSUMER_SETUP.md](DOTNET_CONSUMER_SETUP.md)** - Complete .NET/F# consumer guide with code examples
-- **[setup-nats-consumer.sh](setup-nats-consumer.sh)** - Automated consumer creation script
 - **[NATS_INTEGRATION.md](docs/NATS_INTEGRATION.md)** - NATS integration architecture
 
 ### Additional Documentation
