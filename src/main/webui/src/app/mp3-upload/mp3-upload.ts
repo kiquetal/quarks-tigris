@@ -138,12 +138,14 @@ export class Mp3Upload {
   }
 
   viewFiles() {
-    // TODO: Navigate to files list page or show modal with uploaded files
-    // For now, just show an alert - you can implement a proper file list component later
-    alert('View Files feature - Coming soon!\n\nThis will show your uploaded files from S3 using the metadata.');
-    console.log('View Files clicked - implement file listing here');
-
-    // Example navigation when you create a file list component:
-    // this.router.navigate(['/files'], { queryParams: { email: this.email } });
+    // Navigate to files list page with email if available
+    if (this.email) {
+      this.router.navigate(['/files'], {
+        queryParams: { email: this.email }
+      });
+    } else {
+      // Navigate without email, user can enter it there
+      this.router.navigate(['/files']);
+    }
   }
 }
