@@ -26,6 +26,16 @@ export class Passphrase {
       next: (res) => {
         console.log('Success callback received:', res);
         if (res.validated) {
+          // Store session token and email
+          if (res.sessionToken) {
+            sessionStorage.setItem('sessionToken', res.sessionToken);
+            console.log('Session token stored:', res.sessionToken.substring(0, 8) + '...');
+          }
+          if (res.email) {
+            sessionStorage.setItem('userEmail', res.email);
+            console.log('User email stored:', res.email);
+          }
+
           this.authService.login(this.passphrase);
           this.router.navigate(['/upload']);
         } else {

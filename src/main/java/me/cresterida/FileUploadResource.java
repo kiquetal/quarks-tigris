@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.inject.Inject;
 import me.cresterida.service.NatsService;
+import me.cresterida.service.SessionManager;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -211,6 +212,9 @@ public class FileUploadResource {
         }
     }
 
+    @Inject
+    SessionManager sessionManager;
+
     @POST
     @Path("/validate-passphrase")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -218,11 +222,27 @@ public class FileUploadResource {
     @Operation(summary = "Validate passphrase", description = "Validate the user's passphrase to allow access to upload functionality")
     @APIResponse(responseCode = "200", description = "Passphrase validation result", content = @Content(schema = @Schema(implementation = PassphraseResponse.class)))
     public Response validatePassphrase(PassphraseRequest request) {
-        if ("your-secret-passphrase".equals(request.passphrase)) {
-            return Response.ok(new PassphraseResponse(true)).build();
+        System.out.println("🔑 Validating passphrase...");
+
+        // Validate passphrase and get email
+        String email = sessionManager.validatePassphrase(request.passphrase);
+
+        if (email != null) {
+            // Create session
+            String sessionToken = sessionManager.createSession(email);
+
+            System.out.println("✅ Passphrase valid for email: " + email);
+            System.out.println("   Session token: " + sessionToken.substring(0, 8) + "...");
+
+            PassphraseResponse response = new PassphraseResponse(true);
+            response.sessionToken = sessionToken;
+            response.email = email;
+
+            return Response.ok(response).build();
         } else {
-            return Response.status(Response.Status.FORBIDDEN).
-                    entity(new PassphraseResponse(false)).build();
+            System.out.println("❌ Invalid passphrase");
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(new PassphraseResponse(false)).build();
         }
     }
 }

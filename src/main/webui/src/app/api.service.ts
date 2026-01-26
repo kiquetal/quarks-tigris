@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
 export interface PassphraseResponse {
   validated: boolean;
+  sessionToken?: string;
+  email?: string;
 }
 
 export interface UploadResponse {
@@ -12,6 +14,17 @@ export interface UploadResponse {
   key: string;
   verified: boolean;
   originalSize: number;
+}
+
+export interface FileMetadata {
+  version: string;
+  kek: string;
+  algorithm: string;
+  original_filename: string;
+  original_size: number;
+  encrypted_size: number;
+  verification_status: string;
+  timestamp: number;
 }
 
 @Injectable({
@@ -33,5 +46,12 @@ export class ApiService {
     formData.append('file', file, file.name);
     formData.append('email', email);
     return this.http.post<UploadResponse>(`${this.apiUrl}/upload`, formData);
+  }
+
+  getFiles(sessionToken: string): Observable<FileMetadata[]> {
+    const headers = new HttpHeaders({
+      'X-Session-Token': sessionToken
+    });
+    return this.http.get<FileMetadata[]>(`${this.apiUrl}/files`, { headers });
   }
 }

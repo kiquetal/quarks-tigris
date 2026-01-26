@@ -14,10 +14,6 @@ interface FileMetadata {
   encrypted_size: number;
   verification_status: string;
   timestamp: number;
-  // Additional fields for display
-  s3_data_key?: string;
-  s3_metadata_key?: string;
-  email?: string;
 }
 
 @Component({
@@ -40,10 +36,20 @@ export class FileList implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Get email from query params if available
+    // Get email from query params or sessionStorage
     this.route.queryParams.subscribe(params => {
       if (params['email']) {
         this.email = params['email'];
+      } else {
+        // Try to get from session storage
+        const storedEmail = sessionStorage.getItem('userEmail');
+        if (storedEmail) {
+          this.email = storedEmail;
+        }
+      }
+
+      // Auto-load files if email is available
+      if (this.email) {
         this.loadFiles();
       }
     });
@@ -55,59 +61,40 @@ export class FileList implements OnInit {
       return;
     }
 
+    const sessionToken = sessionStorage.getItem('sessionToken');
+    if (!sessionToken) {
+      this.errorMessage = 'No active session. Please login again.';
+      setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
     this.files = [];
 
-    // TODO: Replace with actual API call when backend endpoint is ready
-    // this.apiService.getFilesByEmail(this.email).subscribe({
-    //   next: (files) => {
-    //     this.files = files;
-    //     this.isLoading = false;
-    //   },
-    //   error: (err) => {
-    //     this.errorMessage = 'Failed to load files: ' + (err.error?.message || err.message);
-    //     this.isLoading = false;
-    //   }
-    // });
+    console.log('Loading files with session token:', sessionToken.substring(0, 8) + '...');
 
-    // Mock data for now
-    setTimeout(() => {
-      this.files = this.getMockFiles();
-      this.isLoading = false;
-    }, 1000);
-  }
-
-  getMockFiles(): FileMetadata[] {
-    // Mock data - replace with actual API call
-    return [
-      {
-        version: '1.0',
-        kek: 'base64encodedkek1...',
-        algorithm: 'AES-GCM-256',
-        original_filename: 'my-audio-file.mp3',
-        original_size: 5242880,
-        encrypted_size: 5242908,
-        verification_status: 'VERIFIED',
-        timestamp: Date.now() - 3600000,
-        s3_data_key: 'uploads/' + this.email + '/uuid1/my-audio-file.mp3.enc',
-        s3_metadata_key: 'uploads/' + this.email + '/uuid1/metadata.json',
-        email: this.email
+    // Call real API with session token
+    this.apiService.getFiles(sessionToken).subscribe({
+      next: (files) => {
+        console.log('Files retrieved:', files);
+        this.files = files;
+        this.isLoading = false;
       },
-      {
-        version: '1.0',
-        kek: 'base64encodedkek2...',
-        algorithm: 'AES-GCM-256',
-        original_filename: 'another-song.mp3',
-        original_size: 3145728,
-        encrypted_size: 3145756,
-        verification_status: 'VERIFIED',
-        timestamp: Date.now() - 7200000,
-        s3_data_key: 'uploads/' + this.email + '/uuid2/another-song.mp3.enc',
-        s3_metadata_key: 'uploads/' + this.email + '/uuid2/metadata.json',
-        email: this.email
+      error: (err) => {
+        console.error('Error loading files:', err);
+
+        if (err.status === 401) {
+          this.errorMessage = 'Session expired. Please login again.';
+          sessionStorage.clear();
+          setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+        } else {
+          this.errorMessage = 'Failed to load files: ' + (err.error?.error || err.message);
+        }
+
+        this.isLoading = false;
       }
-    ];
+    });
   }
 
   formatFileSize(bytes: number): string {
