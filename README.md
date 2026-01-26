@@ -446,86 +446,14 @@ var metadata = await s3Client.GetObjectAsync(
 - Each encryption layer uses unique IVs
 - .NET consumer needs master key to decrypt files
 
-## NATS Consumer Setup (F#/.NET/Python/Go)
+## NATS Consumer Integration
 
-The application publishes file upload events to NATS JetStream, enabling you to build consumers in any language.
+The application publishes file upload events to NATS JetStream, enabling asynchronous processing in any language (F#, C#, Python, Go, Node.js, Rust).
 
-### Quick Setup for F#/.NET Consumer
-
-**1. Start NATS JetStream:**
-```bash
-# Using docker-compose (recommended)
-docker-compose up -d
-
-# Or use the setup script
-./setup-docker.sh
-```
-
-**2. Create Durable Consumer:**
-```bash
-# Automated script
-./setup-nats-consumer.sh
-
-# Or manually
-nats consumer add FILE_UPLOADS file_processor \
-  --server nats://guest:guest@localhost:4222 \
-  --filter "file.uploads" \
-  --ack explicit \
-  --pull \
-  --deliver all \
-  --max-deliver=-1 \
-  --max-pending=100 \
-  --wait=30s \
-  --replay instant
-```
-
-**3. Verify Setup:**
-```bash
-# Check consumer status
-nats consumer info FILE_UPLOADS file_processor \
-  --server nats://guest:guest@localhost:4222
-
-# Test fetching messages
-nats consumer next FILE_UPLOADS file_processor \
-  --server nats://guest:guest@localhost:4222
-```
-
-**4. Build Your F# Consumer:**
-
-See [DOTNET_CONSUMER_SETUP.md](DOTNET_CONSUMER_SETUP.md) for complete code examples.
-
-```fsharp
-// F# example - consume messages from NATS
-let consumeMessages () =
-    use connection = connectionFactory.CreateConnection()
-    let js = connection.CreateJetStreamContext()
-    
-    let consumer = js.GetConsumerContext("FILE_UPLOADS", "file_processor")
-    
-    // Pull messages
-    let messages = consumer.Fetch(10, 5000)
-    
-    for msg in messages do
-        // Deserialize NATS message
-        let fileEvent = JsonSerializer.Deserialize<FileUploadEvent>(msg.Data)
-        
-        // Download from S3 and process
-        processFile fileEvent.s3_data_key fileEvent.s3_metadata_key
-        
-        // Acknowledge
-        msg.Ack()
-```
-
-### Consumer Languages Supported
-
-- ✅ **F#** - Native NATS.Client library
-- ✅ **C#/.NET** - NATS.Client NuGet package
-- ✅ **Python** - nats-py package
-- ✅ **Go** - nats.go library
-- ✅ **Node.js** - nats.js library
-- ✅ **Rust** - async-nats crate
-
-All languages can consume from the same `FILE_UPLOADS` stream and work in parallel!
+For complete setup instructions and code examples, see:
+- **[DOTNET_CONSUMER_SETUP.md](DOTNET_CONSUMER_SETUP.md)** - Complete F#/.NET consumer guide with code examples
+- **[NATS_COMMANDS.md](NATS_COMMANDS.md)** - NATS CLI commands and consumer setup
+- **[NATS_INTEGRATION.md](docs/NATS_INTEGRATION.md)** - Architecture and integration details
 
 ## Configuration
 
@@ -576,22 +504,7 @@ Use the Swagger UI to explore and test all available endpoints with interactive 
 7. Publish event to NATS JetStream
 8. Return success response (see [uploaded-screen.png](docs/screenshot/uploaded-screen.png))
 
-**Request**:
-```bash
-curl -X POST "http://localhost:8080/whisper/api/upload" \
-  -F "file=@audio.mp3" \
-  -F "email=user@example.com"
-```
-
-**Response**:
-```json
-{
-  "message": "File uploaded successfully",
-  "key": "uploads/user@example.com/uuid/audio.mp3.enc",
-  "verified": true,
-  "originalSize": 1048576
-}
-```
+See [API_TESTING.md](API_TESTING.md) for detailed request/response examples and testing instructions.
 
 ### List Files
 
@@ -599,36 +512,9 @@ curl -X POST "http://localhost:8080/whisper/api/upload" \
 
 **Headers**: `X-Session-Token: {session-token}`
 
-Lists all files for the authenticated user with metadata including:
-- Original filename
-- File ID (UUID)
-- File sizes (original and encrypted)
-- Verification status
-- Upload timestamp
-- Encryption algorithm details
+Lists all files for the authenticated user with metadata including original filename, file ID (UUID), file sizes, verification status, upload timestamp, and encryption algorithm details.
 
-**Request**:
-```bash
-curl -X GET "http://localhost:8080/whisper/api/files" \
-  -H "X-Session-Token: your-session-token"
-```
-
-**Response**:
-```json
-[
-  {
-    "version": "1.0",
-    "kek": "base64-encoded-encrypted-dek",
-    "algorithm": "AES-GCM-256",
-    "original_filename": "audio.mp3",
-    "file_id": "550e8400-e29b-41d4-a716-446655440000",
-    "original_size": 1048576,
-    "encrypted_size": 1048604,
-    "verification_status": "VERIFIED",
-    "timestamp": 1737904200000
-  }
-]
-```
+See [API_TESTING.md](API_TESTING.md) for detailed request/response examples and testing instructions.
 
 ### Delete File
 
@@ -640,47 +526,18 @@ curl -X GET "http://localhost:8080/whisper/api/files" \
 - `fileId`: UUID of the file (from list response)
 - `fileName`: Original filename (e.g., `audio.mp3`)
 
-Deletes both the encrypted file and metadata from S3 storage. The frontend automatically:
-- Shows confirmation dialog
-- Removes file from list on success
-- Updates UI immediately with change detection
-
-**Request**:
-```bash
-curl -X DELETE "http://localhost:8080/whisper/api/files?fileId=550e8400-e29b-41d4-a716-446655440000&fileName=audio.mp3" \
-  -H "X-Session-Token: your-session-token"
-```
-
-**Response**:
-```json
-{
-  "message": "File deleted successfully",
-  "fileId": "550e8400-e29b-41d4-a716-446655440000",
-  "fileName": "audio.mp3",
-  "deleted": true,
-  "s3Key": "uploads/user@example.com/550e8400-e29b-41d4-a716-446655440000/audio.mp3.enc"
-}
-```
-
-**What Gets Deleted**:
-1. Encrypted file: `uploads/{email}/{fileId}/{fileName}.enc`
-2. Metadata file: `uploads/{email}/{fileId}/metadata.json`
+Deletes both the encrypted file (`uploads/{email}/{fileId}/{fileName}.enc`) and metadata (`metadata.json`) from S3 storage.
 
 **Important Notes**:
 - Frontend sends original filename (e.g., `audio.mp3`)
-- Backend automatically appends `.enc` extension for S3 lookup
+- Backend automatically handles `.encrypted` and `.enc` extension normalization
 - Both encrypted data and metadata are removed for complete cleanup
 - Operation requires valid session token
 - Deletion is immediate and cannot be undone
 
-**Frontend Integration**:
-The Angular frontend provides a user-friendly delete button for each file in the list. On successful deletion:
-- File immediately disappears from the list
-- No page refresh required
-- Success message displayed to user
-- Error handling for session expiration and failures
+**Frontend Integration**: The Angular frontend provides a user-friendly delete button for each file. On successful deletion, the file immediately disappears from the list with no page refresh required.
 
-See implementation details in [DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md)
+See [DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md) for complete implementation details and [API_TESTING.md](API_TESTING.md) for request/response examples.
 
 ## Documentation
 
