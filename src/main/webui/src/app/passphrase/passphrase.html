@@ -1,5 +1,86 @@
-<div class="container">
-  <h1>Enter Passphrase</h1>
-  <input type="password" [(ngModel)]="passphrase" placeholder="Enter passphrase" (keyup.enter)="validatePassphrase()" />
-  <button (click)="validatePassphrase()">Validate</button>
+<div class="vault-container">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Main vault card with glass effect -->
+  <div class="vault-card">
+    <!-- Logo and title -->
+    <div class="vault-header">
+      <div class="vault-logo">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- Vault door circle -->
+          <circle cx="50" cy="50" r="45" fill="none" stroke="url(#gradient1)" stroke-width="3"/>
+          <circle cx="50" cy="50" r="35" fill="none" stroke="url(#gradient2)" stroke-width="2"/>
+
+          <!-- Lock icon in center -->
+          <path d="M 50 35 L 50 30 M 40 40 Q 40 30 50 30 Q 60 30 60 40 L 60 45 L 40 45 Z"
+                fill="none" stroke="url(#gradient3)" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="38" y="45" width="24" height="18" rx="2" fill="url(#gradient3)" stroke="none"/>
+          <circle cx="50" cy="54" r="3" fill="#0a0e27"/>
+          <line x1="50" y1="57" x2="50" y2="60" stroke="#0a0e27" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- Gradients -->
+          <defs>
+            <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#f093fb;stop-opacity:0.8" />
+              <stop offset="100%" style="stop-color:#4facfe;stop-opacity:0.8" />
+            </linearGradient>
+            <linearGradient id="gradient3" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#ffd89b;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#19547b;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="vault-title">Secret Vault</h1>
+      <div class="encryption-badge">
+        <span class="badge-icon">🔐</span>
+        <span class="badge-text">AES-GCM-256</span>
+      </div>
+    </div>
+
+    <!-- Passphrase input section -->
+    <div class="vault-content">
+      <label for="passphrase" class="vault-label">Enter Master Passphrase</label>
+      <div class="input-wrapper">
+        <input
+          id="passphrase"
+          type="password"
+          [(ngModel)]="passphrase"
+          placeholder="••••••••••••"
+          (keyup.enter)="validatePassphrase()"
+          class="vault-input" />
+        <span class="input-icon">🔑</span>
+      </div>
+
+      <button (click)="validatePassphrase()" class="glass-button">
+        <span class="button-content">
+          <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Unlock Vault
+        </span>
+      </button>
+    </div>
+
+    <!-- Security info footer -->
+    <div class="vault-footer">
+      <p class="security-info">
+        <span class="info-icon">🛡️</span>
+        Protected with PBKDF2 (100,000 iterations)
+      </p>
+    </div>
+  </div>
 </div>
