@@ -1,0 +1,176 @@
+<div class="vault-container">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Main vault card with glass effect -->
+  <div class="vault-card">
+    <!-- Header with title and encryption badge -->
+    <div class="vault-header">
+      <div class="vault-icon">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- Files icon -->
+          <rect x="20" y="15" width="50" height="60" rx="3" fill="none" stroke="url(#gradient1)" stroke-width="3"/>
+          <rect x="30" y="25" width="50" height="60" rx="3" fill="none" stroke="url(#gradient2)" stroke-width="3"/>
+          <line x1="40" y1="45" x2="65" y2="45" stroke="url(#gradient3)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="40" y1="55" x2="65" y2="55" stroke="url(#gradient3)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="40" y1="65" x2="60" y2="65" stroke="url(#gradient3)" stroke-width="2" stroke-linecap="round"/>
+
+          <defs>
+            <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="vault-title">My Files</h1>
+      <div class="encryption-badge">
+        <span class="badge-icon">🗂️</span>
+        <span class="badge-text">Encrypted Storage</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="vault-content">
+      <!-- Email input to filter files -->
+      <div class="input-group">
+        <label for="email" class="vault-label">Email Address</label>
+        <div class="input-wrapper">
+          <input
+            id="email"
+            type="email"
+            [(ngModel)]="email"
+            placeholder="user@example.com"
+            (keyup.enter)="loadFiles()"
+            class="vault-input" />
+          <span class="input-icon">📧</span>
+        </div>
+      </div>
+
+      <!-- Load button -->
+      <button
+        (click)="loadFiles()"
+        [disabled]="!email || isLoading"
+        class="glass-button primary-button load-button">
+        <span class="button-content">
+          <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ isLoading ? 'Loading Files...' : 'Load My Files' }}
+        </span>
+      </button>
+
+      <!-- Error message -->
+      <div *ngIf="errorMessage" class="error-message">
+        <span class="error-icon">⚠️</span>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Files list -->
+      <div *ngIf="files.length > 0" class="files-list">
+        <div class="files-header">
+          <h3>{{ files.length }} File(s) Found</h3>
+        </div>
+
+        <div *ngFor="let file of files" class="file-card">
+          <div class="file-card-header">
+            <div class="file-info">
+              <span class="file-icon">🎵</span>
+              <div class="file-details">
+                <h4 class="file-name">{{ file.original_filename }}</h4>
+                <div class="file-meta">
+                  <span class="meta-item">
+                    <span class="meta-icon">📦</span>
+                    {{ formatFileSize(file.original_size) }}
+                  </span>
+                  <span class="meta-item">
+                    <span class="meta-icon">📅</span>
+                    {{ formatDate(file.timestamp) }}
+                  </span>
+                  <span class="meta-item" [class.verified]="file.verification_status === 'VERIFIED'">
+                    <span class="meta-icon">{{ file.verification_status === 'VERIFIED' ? '✓' : '⚠️' }}</span>
+                    {{ file.verification_status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-card-body">
+            <div class="file-tech-details">
+              <div class="tech-detail">
+                <span class="tech-label">Algorithm:</span>
+                <span class="tech-value">{{ file.algorithm }}</span>
+              </div>
+              <div class="tech-detail">
+                <span class="tech-label">Encrypted Size:</span>
+                <span class="tech-value">{{ formatFileSize(file.encrypted_size) }}</span>
+              </div>
+              <div class="tech-detail">
+                <span class="tech-label">Version:</span>
+                <span class="tech-value">{{ file.version }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-card-actions">
+            <button (click)="downloadFile(file)" class="action-button download-button">
+              <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Download
+            </button>
+            <button (click)="deleteFile(file)" class="action-button delete-button">
+              <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!isLoading && files.length === 0 && email && !errorMessage" class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>No Files Found</h3>
+        <p>You haven't uploaded any files yet.</p>
+      </div>
+
+      <!-- Back button -->
+      <button
+        (click)="goBack()"
+        class="glass-button secondary-button back-button">
+        <span class="button-content">
+          <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Back to Upload
+        </span>
+      </button>
+    </div>
+
+    <!-- Security info footer -->
+    <div class="vault-footer">
+      <p class="security-info">
+        <span class="info-icon">🛡️</span>
+        All files are stored encrypted with envelope encryption
+      </p>
+    </div>
+  </div>
+</div>
