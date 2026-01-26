@@ -10,6 +10,7 @@ interface FileMetadata {
   kek: string;
   algorithm: string;
   original_filename: string;
+  file_id: string;
   original_size: number;
   encrypted_size: number;
   verification_status: string;
@@ -125,10 +126,58 @@ export class FileList implements OnInit {
   }
 
   deleteFile(file: FileMetadata) {
+    if (!file.file_id) {
+      alert('Error: File ID is missing. Cannot delete file.');
+      console.error('File missing file_id:', file);
+      return;
+    }
+
+    if (!file.original_filename) {
+      alert('Error: File name is missing. Cannot delete file.');
+      console.error('File missing original_filename:', file);
+      return;
+    }
+
     if (confirm('Are you sure you want to delete ' + file.original_filename + '?')) {
-      // TODO: Implement delete functionality
-      console.log('Delete file:', file.original_filename);
-      alert('Delete functionality coming soon!');
+      const sessionToken = sessionStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        this.errorMessage = 'No active session. Please login again.';
+        setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+        return;
+      }
+
+      console.log('Deleting file:', file.original_filename);
+      console.log('File ID:', file.file_id);
+      console.log('File Name:', file.original_filename);
+
+      // Call delete API
+      this.apiService.deleteFile(sessionToken, file.file_id, file.original_filename).subscribe({
+        next: (response) => {
+          console.log('File deleted successfully:', response);
+          alert('File "' + file.original_filename + '" deleted successfully!');
+
+          // Remove file from local list
+          this.files = this.files.filter(f => f.file_id !== file.file_id);
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error deleting file:', err);
+          let errorMsg = 'Failed to delete file';
+
+          if (err.status === 401) {
+            errorMsg = 'Session expired. Please login again.';
+            sessionStorage.clear();
+            setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+          } else if (err.error?.error) {
+            errorMsg = err.error.error;
+          } else if (err.message) {
+            errorMsg += ': ' + err.message;
+          }
+
+          this.errorMessage = errorMsg;
+          alert(errorMsg);
+        }
+      });
     }
   }
 

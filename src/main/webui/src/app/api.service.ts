@@ -21,6 +21,7 @@ export interface FileMetadata {
   kek: string;
   algorithm: string;
   original_filename: string;
+  file_id: string;
   original_size: number;
   encrypted_size: number;
   verification_status: string;
@@ -53,5 +54,16 @@ export class ApiService {
       'X-Session-Token': sessionToken
     });
     return this.http.get<FileMetadata[]>(`${this.apiUrl}/files`, { headers });
+  }
+
+  deleteFile(sessionToken: string, fileId: string, fileName: string): Observable<any> {
+    const headers = new HttpHeaders({
+      'X-Session-Token': sessionToken
+    });
+    const params = {
+      fileId: fileId,
+      fileName: fileName
+    };
+    return this.http.delete(`${this.apiUrl}/files`, { headers, params });
   }
 }

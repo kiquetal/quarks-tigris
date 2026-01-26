@@ -21,6 +21,9 @@ public class EnvelopeMetadata {
     @JsonProperty("original_filename")
     public String originalFilename;
 
+    @JsonProperty("file_id")
+    public String fileId;  // UUID folder name in S3 (uploads/email/UUID/)
+
     @JsonProperty("original_size")
     public long originalSize;
 

@@ -106,14 +106,12 @@ public class FileListResource {
                     System.out.println("   📄 Processing metadata: " + s3Object.key());
                     EnvelopeMetadata metadata = downloadMetadata(s3Object.key());
                     if (metadata != null) {
-                        // Add S3 keys for frontend (derive data key from metadata key)
-                        String dataKey = s3Object.key().replace("/metadata.json", ".enc");
-                        // Try to find the actual encrypted file
-                        for (S3Object obj : listResponse.contents()) {
-                            if (obj.key().endsWith(".enc") && obj.key().contains(s3Object.key().split("/")[2])) {
-                                dataKey = obj.key();
-                                break;
-                            }
+                        // Extract fileId from S3 key: uploads/email/fileId/metadata.json
+                        String[] keyParts = s3Object.key().split("/");
+                        if (keyParts.length >= 3) {
+                            String fileId = keyParts[2]; // The UUID folder
+                            metadata.fileId = fileId;
+                            System.out.println("      📋 File ID: " + fileId);
                         }
 
                         metadataList.add(metadata);
@@ -172,6 +170,21 @@ public class FileListResource {
         System.out.println("\n🗑️ Delete file request received");
         System.out.println("   File ID: " + fileId);
         System.out.println("   File Name: " + fileName);
+
+        // Validate required parameters
+        if (fileId == null || fileId.isEmpty()) {
+            System.out.println("   ❌ Missing fileId parameter");
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of("error", "fileId parameter is required"))
+                .build();
+        }
+
+        if (fileName == null || fileName.isEmpty()) {
+            System.out.println("   ❌ Missing fileName parameter");
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of("error", "fileName parameter is required"))
+                .build();
+        }
 
         // Validate session token
         if (sessionToken == null || sessionToken.isEmpty()) {
