@@ -11,6 +11,8 @@ import jakarta.ws.rs.core.Response;
 import me.cresterida.service.NatsService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +25,8 @@ import java.util.UUID;
 @Path("/api/nats-test")
 @Tag(name = "NATS Testing", description = "Endpoints for testing NATS JetStream integration")
 public class NatsTestResource {
+
+    private static final Logger logger = LoggerFactory.getLogger(NatsTestResource.class);
 
     @Inject
     NatsService natsService;
@@ -45,9 +49,9 @@ public class NatsTestResource {
             String testMetadataKey = "test/data/" + testFileUuid + "/metadata.json";
             String testBucket = "whisper-uploads";
 
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("📤 Manual NATS Test - Publishing test message");
-            System.out.println("=".repeat(80));
+            logger.info("=".repeat(80));
+            logger.info("Manual NATS Test - Publishing test message");
+            logger.info("=".repeat(80));
 
             natsService.publishFileUpload(
                 testEmail,
@@ -69,6 +73,8 @@ public class NatsTestResource {
             return Response.ok(response).build();
 
         } catch (Exception e) {
+            logger.error("Failed to publish test message: {}", e.getMessage(), e);
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Failed to publish test message");
@@ -101,11 +107,11 @@ public class NatsTestResource {
             String testMetadataKey = "test/data/" + testFileUuid + "/metadata.json";
             String testBucket = "whisper-uploads";
 
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("📤 Manual NATS Test - Publishing custom message");
-            System.out.println("   Email: " + testEmail);
-            System.out.println("   File ID: " + testFileUuid);
-            System.out.println("=".repeat(80));
+            logger.info("=".repeat(80));
+            logger.info("Manual NATS Test - Publishing custom message");
+            logger.info("   Email: {}", testEmail);
+            logger.info("   File ID: {}", testFileUuid);
+            logger.info("=".repeat(80));
 
             natsService.publishFileUpload(
                 testEmail,
@@ -129,6 +135,8 @@ public class NatsTestResource {
             return Response.ok(response).build();
 
         } catch (Exception e) {
+            logger.error("Failed to publish custom test message: {}", e.getMessage(), e);
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Failed to publish custom test message");

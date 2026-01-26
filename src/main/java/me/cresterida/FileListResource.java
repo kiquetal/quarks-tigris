@@ -51,30 +51,29 @@ public class FileListResource {
     @GET
     @Operation(summary = "List files", description = "List all files uploaded by the authenticated user (requires valid session)")
     public Response listFiles(@HeaderParam("X-Session-Token") String sessionToken) {
-        System.out.println("\n📋 List files request received");
-        System.out.println("   Session token: " + (sessionToken != null ? sessionToken.substring(0, Math.min(8, sessionToken.length())) + "..." : "null"));
+        logger.info("List files request received");
+        logger.debug("Session token: {}...", sessionToken != null ? sessionToken.substring(0, Math.min(8, sessionToken.length())) : "null");
 
         // Validate session
         String email = sessionManager.validateSession(sessionToken);
         if (email == null) {
-            System.out.println("   ❌ Invalid or expired session");
+            logger.warn("Invalid or expired session");
             return Response.status(Response.Status.UNAUTHORIZED)
                 .entity(Map.of("error", "Invalid or expired session. Please login again."))
                 .build();
         }
 
-        System.out.println("   ✅ Session valid for email: " + email);
+        logger.info("Session valid for email: {}", email);
 
         try {
             // List all metadata files for this user
             List<EnvelopeMetadata> metadataList = fetchUserMetadata(email);
 
-            System.out.println("   📦 Retrieved " + metadataList.size() + " files for user: " + email);
+            logger.info("Retrieved {} files for user: {}", metadataList.size(), email);
             return Response.ok(metadataList).build();
 
         } catch (Exception e) {
             logger.error("Error listing files for user: {}", email, e);
-            System.err.println("   ❌ Error listing files: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", "Failed to retrieve files"))
                 .build();
@@ -90,7 +89,7 @@ public class FileListResource {
         try {
             // List objects with prefix (user's folder in S3)
             String prefix = "uploads/" + email + "/";
-            System.out.println("   🔍 Searching S3 bucket: " + bucketName + " with prefix: " + prefix);
+            logger.debug("Searching S3 bucket: {} with prefix: {}", bucketName, prefix);
 
             ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
                 .bucket(bucketName)
@@ -98,12 +97,12 @@ public class FileListResource {
                 .build();
 
             ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
-            System.out.println("   📂 Found " + listResponse.contents().size() + " objects in S3");
+            logger.debug("Found {} objects in S3", listResponse.contents().size());
 
             // Filter metadata.json files
             for (S3Object s3Object : listResponse.contents()) {
                 if (s3Object.key().endsWith("/metadata.json")) {
-                    System.out.println("   📄 Processing metadata: " + s3Object.key());
+                    logger.debug("Processing metadata: {}", s3Object.key());
                     EnvelopeMetadata metadata = downloadMetadata(s3Object.key());
                     if (metadata != null) {
                         // Extract fileId from S3 key: uploads/email/fileId/metadata.json
@@ -111,18 +110,17 @@ public class FileListResource {
                         if (keyParts.length >= 3) {
                             String fileId = keyParts[2]; // The UUID folder
                             metadata.fileId = fileId;
-                            System.out.println("      📋 File ID: " + fileId);
+                            logger.debug("File ID: {}", fileId);
                         }
 
                         metadataList.add(metadata);
-                        System.out.println("      ✓ Added file: " + metadata.originalFilename);
+                        logger.debug("Added file: {}", metadata.originalFilename);
                     }
                 }
             }
 
         } catch (Exception e) {
             logger.error("Error fetching metadata from S3", e);
-            System.err.println("   ❌ Error fetching from S3: " + e.getMessage());
         }
 
         return metadataList;
@@ -146,8 +144,7 @@ public class FileListResource {
             }
 
         } catch (Exception e) {
-            logger.error("Error downloading metadata: {}", s3Key, e);
-            System.err.println("      ⚠ Failed to download/parse metadata: " + e.getMessage());
+            logger.warn("Failed to download/parse metadata: {}", s3Key, e);
             return null;
         }
     }
@@ -167,20 +164,20 @@ public class FileListResource {
             @QueryParam("fileId") String fileId,
             @QueryParam("fileName") String fileName) {
 
-        System.out.println("\n🗑️ Delete file request received");
-        System.out.println("   File ID: " + fileId);
-        System.out.println("   File Name: " + fileName);
+        logger.info("Delete file request received");
+        logger.debug("File ID: {}", fileId);
+        logger.debug("File Name: {}", fileName);
 
         // Validate required parameters
         if (fileId == null || fileId.isEmpty()) {
-            System.out.println("   ❌ Missing fileId parameter");
+            logger.warn("Missing fileId parameter");
             return Response.status(Response.Status.BAD_REQUEST)
                 .entity(Map.of("error", "fileId parameter is required"))
                 .build();
         }
 
         if (fileName == null || fileName.isEmpty()) {
-            System.out.println("   ❌ Missing fileName parameter");
+            logger.warn("Missing fileName parameter");
             return Response.status(Response.Status.BAD_REQUEST)
                 .entity(Map.of("error", "fileName parameter is required"))
                 .build();
@@ -188,7 +185,7 @@ public class FileListResource {
 
         // Validate session token
         if (sessionToken == null || sessionToken.isEmpty()) {
-            System.out.println("   ❌ No session token provided");
+            logger.warn("No session token provided");
             return Response.status(Response.Status.UNAUTHORIZED)
                 .entity(Map.of("error", "Session token required"))
                 .build();
@@ -196,19 +193,19 @@ public class FileListResource {
 
         String email = sessionManager.validateSession(sessionToken);
         if (email == null) {
-            System.out.println("   ❌ Invalid or expired session");
+            logger.warn("Invalid or expired session");
             return Response.status(Response.Status.UNAUTHORIZED)
                 .entity(Map.of("error", "Invalid or expired session"))
                 .build();
         }
 
-        System.out.println("   ✅ Session valid for email: " + email);
+        logger.info("Session valid for email: {}", email);
 
         // Generate S3 key
         String s3Key = generateS3Key(email, fileId, fileName);
 
         try {
-            System.out.println("   🔄 Deleting file: " + s3Key);
+            logger.info("Deleting file: {}", s3Key);
 
             // Delete the encrypted file
             DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
@@ -227,7 +224,7 @@ public class FileListResource {
 
             s3Client.deleteObject(metadataDeleteRequest);
 
-            System.out.println("   ✅ File deleted successfully");
+            logger.info("File deleted successfully");
 
             // Create and return response DTO
             DeleteFileResponse response = new DeleteFileResponse(
@@ -242,14 +239,12 @@ public class FileListResource {
 
         } catch (S3Exception e) {
             logger.error("S3 error deleting file: {}", s3Key, e);
-            System.err.println("   ❌ S3 error: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", "Failed to delete file from storage"))
                 .build();
 
         } catch (Exception e) {
             logger.error("Error deleting file: {}", s3Key, e);
-            System.err.println("   ❌ Error: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", "Failed to delete file"))
                 .build();
