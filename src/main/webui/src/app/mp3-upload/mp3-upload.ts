@@ -1,4 +1,5 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -9,7 +10,7 @@ import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-mp3-upload',
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './mp3-upload.html',
   styleUrl: './mp3-upload.css',
 })
@@ -134,5 +135,15 @@ export class Mp3Upload {
     } else {
       console.warn('No file selected or email missing');
     }
+  }
+
+  viewFiles() {
+    // TODO: Navigate to files list page or show modal with uploaded files
+    // For now, just show an alert - you can implement a proper file list component later
+    alert('View Files feature - Coming soon!\n\nThis will show your uploaded files from S3 using the metadata.');
+    console.log('View Files clicked - implement file listing here');
+
+    // Example navigation when you create a file list component:
+    // this.router.navigate(['/files'], { queryParams: { email: this.email } });
   }
 }

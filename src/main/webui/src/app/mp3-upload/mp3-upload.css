@@ -3,91 +3,452 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background-color: #1a1a2e;
-  color: #e0e0e0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1528 100%);
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  position: relative;
 }
 
-.container {
+/* Animated particle background */
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(102, 126, 234, 0.6);
+  border-radius: 50%;
+  animation: float 20s infinite;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
+}
+
+.particle:nth-child(1) {
+  left: 15%;
+  top: 25%;
+  animation-duration: 16s;
+  animation-delay: 0s;
+}
+
+.particle:nth-child(2) {
+  left: 75%;
+  top: 15%;
+  animation-duration: 19s;
+  animation-delay: 2s;
+  background: rgba(118, 75, 162, 0.6);
+}
+
+.particle:nth-child(3) {
+  left: 35%;
+  top: 65%;
+  animation-duration: 23s;
+  animation-delay: 4s;
+  background: rgba(79, 172, 254, 0.6);
+}
+
+.particle:nth-child(4) {
+  left: 85%;
+  top: 55%;
+  animation-duration: 18s;
+  animation-delay: 1s;
+}
+
+.particle:nth-child(5) {
+  left: 45%;
+  top: 35%;
+  animation-duration: 21s;
+  animation-delay: 3s;
+  background: rgba(240, 147, 251, 0.6);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(50px, -30px) scale(1.2);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-30px, 50px) scale(0.8);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(40px, 20px) scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+/* Main vault container */
+.vault-container {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
 }
 
-h1 {
-  font-size: 32px;
-  margin-bottom: 30px;
-  color: #e0e0e0;
+/* Glass-morphism card */
+.vault-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.37),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  padding: 48px 40px;
+  max-width: 580px;
+  width: 100%;
+  animation: cardSlideIn 0.6s ease-out;
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Vault header */
+.vault-header {
   text-align: center;
+  margin-bottom: 40px;
 }
 
-input[type="email"],
-input[type="file"] {
-  width: 300px;
-  padding: 12px 20px;
-  margin: 8px 0;
-  display: inline-block;
-  border: 1px solid #0f3460;
-  border-radius: 4px;
+.vault-icon {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 20px;
+}
+
+.vault-icon svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
+}
+
+.vault-title {
+  font-size: 42px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+.encryption-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b8c5ff;
+  backdrop-filter: blur(10px);
+}
+
+.badge-icon {
+  font-size: 16px;
+}
+
+.badge-text {
+  letter-spacing: 0.5px;
+}
+
+/* Content section */
+.vault-content {
+  margin-bottom: 32px;
+}
+
+.input-group {
+  margin-bottom: 24px;
+}
+
+.vault-label {
+  display: block;
+  color: #b8c5ff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Input wrapper with icon */
+.input-wrapper {
+  position: relative;
+}
+
+.vault-input {
+  width: 100%;
+  padding: 16px 50px 16px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  color: #e0e7ff;
+  font-size: 16px;
+  transition: all 0.3s ease;
   box-sizing: border-box;
-  background-color: #16213e;
-  color: #e0e0e0;
-  font-size: 16px;
 }
 
-input[type="email"]:focus,
-input[type="file"]:focus {
+.vault-input::placeholder {
+  color: rgba(184, 197, 255, 0.4);
+}
+
+.vault-input:focus {
   outline: none;
-  border-color: #2196F3;
+  border-color: #667eea;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 4px rgba(102, 126, 234, 0.1),
+    0 0 30px rgba(102, 126, 234, 0.3);
 }
 
-input[type="file"]::file-selector-button {
-  background-color: #0f3460;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+.input-icon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* File input custom styling */
+.file-input-wrapper {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
   cursor: pointer;
-  margin-right: 10px;
+  z-index: 2;
 }
 
-input[type="file"]::file-selector-button:hover {
-  background-color: #16213e;
-}
-
-button {
-  width: 300px;
-  background-color: #0f3460;
-  color: white;
-  padding: 14px 20px;
-  margin: 8px 0;
-  border: none;
-  border-radius: 4px;
+.file-input-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  color: #b8c5ff;
+  font-size: 14px;
+  transition: all 0.3s ease;
   cursor: pointer;
+}
+
+.file-input-wrapper:hover .file-input-display {
+  border-color: #667eea;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.file-icon {
+  font-size: 24px;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e0e7ff;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
+  padding: 4px 12px;
+  background: rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+}
+
+/* Button group */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* Glass button base */
+.glass-button {
+  width: 100%;
+  padding: 18px 32px;
+  border-radius: 12px;
+  color: #ffffff;
   font-size: 16px;
-  transition: background-color 0.3s ease;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  border: none;
 }
 
-button:hover:not(:disabled) {
-  background-color: #16213e;
+.button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
-button:active:not(:disabled) {
-  background-color: #0a2540;
+.button-icon {
+  width: 20px;
+  height: 20px;
+  color: currentColor;
 }
 
-button:disabled {
-  background-color: #16213e;
+.glass-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.glass-button:hover::before {
+  left: 100%;
+}
+
+/* Primary button (Upload) */
+.primary-button {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+  border: 2px solid rgba(102, 126, 234, 0.5);
+  box-shadow:
+    0 4px 20px rgba(102, 126, 234, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.5) 0%, rgba(118, 75, 162, 0.5) 100%);
+  border-color: #667eea;
+  box-shadow:
+    0 6px 30px rgba(102, 126, 234, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 15px rgba(102, 126, 234, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.primary-button:disabled {
+  background: rgba(102, 126, 234, 0.15);
+  border-color: rgba(102, 126, 234, 0.2);
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
-.encrypting-message {
-  color: #2196F3;
+/* Secondary button (View Files) */
+.secondary-button {
+  background: rgba(79, 172, 254, 0.15);
+  border: 2px solid rgba(79, 172, 254, 0.4);
+  box-shadow:
+    0 4px 20px rgba(79, 172, 254, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.secondary-button:hover {
+  background: rgba(79, 172, 254, 0.25);
+  border-color: #4facfe;
+  box-shadow:
+    0 6px 30px rgba(79, 172, 254, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.secondary-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 15px rgba(79, 172, 254, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Footer with security info */
+.vault-footer {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.security-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(184, 197, 255, 0.7);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.info-icon {
   font-size: 14px;
-  margin-top: 10px;
-  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .vault-card {
+    padding: 36px 24px;
+    margin: 16px;
+  }
+
+  .vault-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .vault-title {
+    font-size: 32px;
+  }
+
+  .button-group {
+    gap: 10px;
+  }
+
+  .security-info {
+    font-size: 11px;
+    flex-direction: column;
+  }
 }
 

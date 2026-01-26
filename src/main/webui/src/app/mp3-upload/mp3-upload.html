@@ -1,8 +1,121 @@
-<div class="container">
-  <h1>Upload MP3 File</h1>
-  <input type="email" [(ngModel)]="email" placeholder="Enter your email" />
-  <input type="file" (change)="onFileSelected($event)" accept=".mp3,audio/mpeg" />
-  <button (click)="onUpload()" [disabled]="!selectedFile || !email || isEncrypting">
-    {{ isEncrypting ? 'Uploading...' : 'Upload' }}
-  </button>
+<div class="vault-container">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Main vault card with glass effect -->
+  <div class="vault-card">
+    <!-- Header with title and encryption badge -->
+    <div class="vault-header">
+      <div class="vault-icon">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- Upload cloud icon -->
+          <path d="M 50 25 Q 35 25 25 35 Q 15 45 15 60 L 85 60 Q 85 45 75 35 Q 65 25 50 25 Z"
+                fill="none" stroke="url(#gradient1)" stroke-width="3"/>
+          <path d="M 50 40 L 50 70 M 40 60 L 50 70 L 60 60"
+                stroke="url(#gradient2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="35" y1="75" x2="65" y2="75" stroke="url(#gradient1)" stroke-width="3" stroke-linecap="round"/>
+
+          <defs>
+            <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="gradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="vault-title">Secure Upload</h1>
+      <div class="encryption-badge">
+        <span class="badge-icon">🔐</span>
+        <span class="badge-text">AES-GCM-256 Encrypted</span>
+      </div>
+    </div>
+
+    <!-- Upload form content -->
+    <div class="vault-content">
+      <!-- Email input -->
+      <div class="input-group">
+        <label for="email" class="vault-label">Email Address</label>
+        <div class="input-wrapper">
+          <input
+            id="email"
+            type="email"
+            [(ngModel)]="email"
+            placeholder="user@example.com"
+            class="vault-input" />
+          <span class="input-icon">📧</span>
+        </div>
+      </div>
+
+      <!-- File input -->
+      <div class="input-group">
+        <label for="file" class="vault-label">Audio File</label>
+        <div class="file-input-wrapper">
+          <input
+            id="file"
+            type="file"
+            (change)="onFileSelected($event)"
+            accept=".mp3,audio/mpeg"
+            class="file-input" />
+          <div class="file-input-display">
+            <span class="file-icon">🎵</span>
+            <span class="file-name">{{ selectedFile ? selectedFile.name : 'Choose MP3 file...' }}</span>
+            <span class="file-size" *ngIf="selectedFile">
+              {{ (selectedFile.size / (1024 * 1024)).toFixed(2) }} MB
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="button-group">
+        <!-- Upload button -->
+        <button
+          (click)="onUpload()"
+          [disabled]="!selectedFile || !email || isEncrypting"
+          class="glass-button primary-button">
+          <span class="button-content">
+            <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            {{ isEncrypting ? 'Encrypting & Uploading...' : 'Upload File' }}
+          </span>
+        </button>
+
+        <!-- View Files button -->
+        <button
+          (click)="viewFiles()"
+          class="glass-button secondary-button">
+          <span class="button-content">
+            <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="13 2 13 9 20 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="9" y1="13" x2="15" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="9" y1="17" x2="15" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            View My Files
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Security info footer -->
+    <div class="vault-footer">
+      <p class="security-info">
+        <span class="info-icon">🛡️</span>
+        Files are encrypted client-side before upload • End-to-end encryption
+      </p>
+    </div>
+  </div>
 </div>
