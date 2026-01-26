@@ -175,9 +175,15 @@ bucket-name/
 └── uploads/
     └── {email}/
         └── {fileId}/  (UUID)
-            ├── {originalFileName}.enc  (encrypted file)
+            ├── {originalFileName}.enc  (encrypted file - NOTE: .enc extension added)
             └── metadata.json           (envelope metadata)
 ```
+
+**Example:**
+- Original file: `zeno.mp3`
+- UUID: `7f864ee8-f081-4eba-81ea-b2ce03bab271`
+- Stored as: `uploads/user@example.com/7f864ee8-f081-4eba-81ea-b2ce03bab271/zeno.mp3.enc`
+- Metadata: `uploads/user@example.com/7f864ee8-f081-4eba-81ea-b2ce03bab271/metadata.json`
 
 ## Testing
 
@@ -225,6 +231,12 @@ bucket-name/
 2. **Structure**: S3 uses nested folder structure: `uploads/{email}/{fileId}/{fileName}`
 3. **Validation**: Both are needed to construct the correct S3 key
 4. **Metadata**: Files are tracked by both UUID and original name
+
+**Important Note on File Extensions:**
+- Frontend sends the **original filename** (e.g., `zeno.mp3`)
+- Backend automatically appends `.enc` extension in `generateS3Key()` method
+- Actual S3 storage: `uploads/{email}/{fileId}/zeno.mp3.enc`
+- This ensures the correct encrypted file is deleted from S3
 
 ### What Gets Deleted?
 
@@ -299,3 +311,24 @@ Possible improvements:
 - Delete confirmation via email
 - Audit log of deletions
 - Recycle bin feature
+
+## Troubleshooting
+
+### Angular List Not Updating After Delete
+
+If the file list doesn't update after deletion:
+
+1. **Verify console logs** - Check if delete succeeds in browser console
+2. **Check trackBy** - Ensure template uses `trackBy: trackByFileId`
+3. **New array reference** - Code uses spread operator: `[...array.filter()]`
+4. **Zone execution** - Update wrapped in `NgZone.run()`
+5. **Change detection** - `cdr.detectChanges()` called after update
+
+**The implementation includes ALL these fixes:**
+- ✅ Creates new array reference with spread operator
+- ✅ Wraps update in NgZone.run() for proper zone execution
+- ✅ Calls detectChanges() explicitly
+- ✅ Uses trackBy in template for proper DOM updates
+
+See detailed troubleshooting guide: [ANGULAR_LIST_UPDATE_FIX.md](ANGULAR_LIST_UPDATE_FIX.md)
+

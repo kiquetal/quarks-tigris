@@ -86,7 +86,7 @@
           <h3>{{ files.length }} File(s) Found</h3>
         </div>
 
-        <div *ngFor="let file of files" class="file-card">
+        <div *ngFor="let file of files; trackBy: trackByFileId" class="file-card">
           <div class="file-card-header">
             <div class="file-info">
               <span class="file-icon">🎵</span>

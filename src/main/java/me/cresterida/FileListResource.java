@@ -257,9 +257,10 @@ public class FileListResource {
     }
 
     private String generateS3Key(String email, String fileId, String objectName) {
-
-        return "uploads/" + email + "/" + fileId + "/" + objectName;
-
+        // Encrypted files are stored with .enc extension
+        // If the objectName doesn't already have .enc, append it
+        String encryptedFileName = objectName.endsWith(".enc") ? objectName : objectName + ".enc";
+        return "uploads/" + email + "/" + fileId + "/" + encryptedFileName;
     }
 
 }

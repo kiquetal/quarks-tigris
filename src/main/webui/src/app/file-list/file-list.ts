@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -34,7 +34,8 @@ export class FileList implements OnInit {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit() {
@@ -146,22 +147,36 @@ export class FileList implements OnInit {
         return;
       }
 
-      console.log('Deleting file:', file.original_filename);
-      console.log('File ID:', file.file_id);
-      console.log('File Name:', file.original_filename);
+      console.log('🗑️ Deleting file:', file.original_filename);
+      console.log('   File ID:', file.file_id);
+      console.log('   File Name:', file.original_filename);
+      console.log('   Files before delete:', this.files.length);
 
       // Call delete API
       this.apiService.deleteFile(sessionToken, file.file_id, file.original_filename).subscribe({
         next: (response) => {
-          console.log('File deleted successfully:', response);
-          alert('File "' + file.original_filename + '" deleted successfully!');
+          console.log('✅ File deleted successfully:', response);
 
-          // Remove file from local list
-          this.files = this.files.filter(f => f.file_id !== file.file_id);
-          this.cdr.detectChanges();
+          // Use NgZone to ensure Angular detects the change
+          this.ngZone.run(() => {
+            // Remove file from local list - create NEW array reference
+            const fileIdToDelete = file.file_id;
+            const filesBefore = this.files.length;
+
+            // Create a completely new array to ensure change detection
+            this.files = [...this.files.filter(f => f.file_id !== fileIdToDelete)];
+
+            console.log('   Files after delete:', this.files.length, '(removed', filesBefore - this.files.length, 'file)');
+
+            // Force change detection
+            this.cdr.detectChanges();
+
+            // Show success message
+            alert('File "' + file.original_filename + '" deleted successfully!');
+          });
         },
         error: (err) => {
-          console.error('Error deleting file:', err);
+          console.error('❌ Error deleting file:', err);
           let errorMsg = 'Failed to delete file';
 
           if (err.status === 401) {
@@ -176,9 +191,14 @@ export class FileList implements OnInit {
 
           this.errorMessage = errorMsg;
           alert(errorMsg);
+          this.cdr.detectChanges();
         }
       });
     }
+  }
+
+  trackByFileId(index: number, file: FileMetadata): string {
+    return file.file_id;
   }
 
   goBack() {
