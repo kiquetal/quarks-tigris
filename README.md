@@ -170,16 +170,14 @@ uploads/{email}/{uuid}/
 
 ```json
 {
-  "encryptedDEK": "base64-encoded-encrypted-data-encryption-key",
-  "dekIV": "base64-encoded-initialization-vector-for-dek",
-  "dataIV": "base64-encoded-initialization-vector-for-file",
-  "originalFileName": "audio.mp3",
-  "encryptedFileName": "audio.mp3.enc",
-  "fileSize": 1048576,
-  "encryptedSize": 1048592,
-  "contentType": "audio/mpeg",
-  "uploadTime": "2026-01-26T15:30:00Z",
-  "email": "user@example.com"
+  "version": "1.0",
+  "kek": "base64-encoded-encrypted-dek-with-iv-and-tag",
+  "algorithm": "AES-GCM-256",
+  "original_filename": "audio.mp3",
+  "original_size": 1048576,
+  "encrypted_size": 1048604,
+  "verification_status": "VERIFIED",
+  "timestamp": 1706140800000
 }
 ```
 
@@ -187,30 +185,36 @@ uploads/{email}/{uuid}/
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `encryptedDEK` | String (Base64) | The Data Encryption Key (DEK) encrypted with the master key using AES-256-GCM |
-| `dekIV` | String (Base64) | 12-byte initialization vector used to encrypt the DEK |
-| `dataIV` | String (Base64) | 12-byte initialization vector used to encrypt the file data with the DEK |
-| `originalFileName` | String | Original file name before encryption |
-| `encryptedFileName` | String | File name with `.enc` extension |
-| `fileSize` | Long | Original file size in bytes |
-| `encryptedSize` | Long | Encrypted file size in bytes (includes GCM tag) |
-| `contentType` | String | MIME type of the original file |
-| `uploadTime` | String (ISO-8601) | Timestamp when file was uploaded |
-| `email` | String | Email address of the uploader |
+| `version` | String | Metadata format version (currently "1.0") |
+| `kek` | String (Base64) | The KEK (Key Encryption Key) - contains the DEK encrypted with master key. Format: `[12 bytes IV][encrypted DEK][16 bytes GCM tag]` (base64-encoded) |
+| `algorithm` | String | Encryption algorithm used ("AES-GCM-256") |
+| `original_filename` | String | Original file name before encryption |
+| `original_size` | Long | Original file size in bytes |
+| `encrypted_size` | Long | Encrypted file size in bytes (includes IV + GCM tag) |
+| `verification_status` | String | Verification status: "VERIFIED" or "NOT_VERIFIED" |
+| `timestamp` | Long | Unix timestamp in milliseconds (epoch time) when file was uploaded |
 
 **Encryption Process:**
 
 1. Generate random 256-bit DEK (Data Encryption Key)
 2. Encrypt file data with DEK using AES-256-GCM (streaming)
-3. Encrypt DEK with master key using AES-256-GCM
+   - Format: `[12 bytes IV][encrypted data][16 bytes GCM tag]`
+3. Encrypt DEK with master key using AES-256-GCM to create KEK
+   - Format: `[12 bytes IV][encrypted DEK][16 bytes GCM tag]` (stored as base64 in `kek` field)
 4. Store encrypted file and metadata separately in S3
 
 **Decryption Process:**
 
 1. Retrieve envelope metadata from S3
-2. Decrypt DEK using master key and `dekIV`
-3. Use decrypted DEK to decrypt file data with `dataIV`
+2. Decrypt KEK (which is the encrypted DEK) using master key
+3. Use decrypted DEK to decrypt file data
 4. Return original file
+
+**Important Notes:**
+- The `kek` field contains **both** the IV and encrypted DEK in a single base64 string
+- The encrypted file contains **its own** IV at the beginning (12 bytes)
+- Each encryption operation uses a unique, randomly generated IV
+- The DEK is never stored in plaintext - only as encrypted KEK
 
 ### NATS JetStream Message Format
 
@@ -309,18 +313,18 @@ uploads/alice@example.com/550e8400-e29b-41d4-a716-446655440000/metadata.json
 `metadata.json`:
 ```json
 {
-  "encryptedDEK": "kL8vN2mR5tY9wB3xF6jP1qS4uH7zC0eI=",
-  "dekIV": "a1b2c3d4e5f6g7h8i9j0k1l2",
-  "dataIV": "m1n2o3p4q5r6s7t8u9v0w1x2",
-  "originalFileName": "my-audio.mp3",
-  "encryptedFileName": "my-audio.mp3.enc",
-  "fileSize": 1048576,
-  "encryptedSize": 1048592,
-  "contentType": "audio/mpeg",
-  "uploadTime": "2026-01-26T15:30:00.123Z",
-  "email": "alice@example.com"
+  "version": "1.0",
+  "kek": "a1b2c3d4e5f6g7h8i9j0k1l2kL8vN2mR5tY9wB3xF6jP1qS4uH7zC0eI+GCMTag==",
+  "algorithm": "AES-GCM-256",
+  "original_filename": "my-audio.mp3",
+  "original_size": 1048576,
+  "encrypted_size": 1048604,
+  "verification_status": "VERIFIED",
+  "timestamp": 1737904200000
 }
 ```
+
+**Note**: The `kek` field contains `[12 bytes IV][encrypted DEK][16 bytes GCM tag]` as a single base64 string.
 
 **Step 4: NATS Message Published**
 
