@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -32,25 +32,29 @@ export class FileList implements OnInit {
     private apiService: ApiService,
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    // Get email from query params or sessionStorage
+    // Get email from sessionStorage first (set during login)
+    const storedEmail = sessionStorage.getItem('userEmail');
+    if (storedEmail) {
+      this.email = storedEmail;
+    }
+
+    // Check query params (they override session storage)
     this.route.queryParams.subscribe(params => {
       if (params['email']) {
         this.email = params['email'];
-      } else {
-        // Try to get from session storage
-        const storedEmail = sessionStorage.getItem('userEmail');
-        if (storedEmail) {
-          this.email = storedEmail;
-        }
       }
 
-      // Auto-load files if email is available
+      // Always load files if we have an email (from either source)
       if (this.email) {
+        console.log('Auto-loading files for email:', this.email);
         this.loadFiles();
+      } else {
+        console.log('No email available, user must enter it manually');
       }
     });
   }
@@ -71,15 +75,18 @@ export class FileList implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.files = [];
+    this.cdr.detectChanges(); // Force UI update
 
-    console.log('Loading files with session token:', sessionToken.substring(0, 8) + '...');
+    console.log('Loading files for email:', this.email);
+    console.log('Using session token:', sessionToken.substring(0, 8) + '...');
 
     // Call real API with session token
     this.apiService.getFiles(sessionToken).subscribe({
       next: (files) => {
-        console.log('Files retrieved:', files);
+        console.log('Files retrieved successfully:', files.length, 'files');
         this.files = files;
         this.isLoading = false;
+        this.cdr.detectChanges(); // Force UI update
       },
       error: (err) => {
         console.error('Error loading files:', err);
@@ -93,6 +100,7 @@ export class FileList implements OnInit {
         }
 
         this.isLoading = false;
+        this.cdr.detectChanges(); // Force UI update
       }
     });
   }
