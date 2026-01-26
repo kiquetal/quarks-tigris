@@ -12,6 +12,45 @@ A Quarkus-based secure file upload service with Angular frontend, featuring enve
 ✅ **Angular Frontend** - Modern SPA with authentication  
 ✅ **OpenAPI Documentation** - Auto-generated API docs  
 
+## Screenshots
+
+### User Interface Walkthrough
+
+**1. Passphrase Authentication**
+
+![Passphrase Screen](docs/screenshot/passphrase-screen.png)
+
+Users authenticate with a secure passphrase before accessing the file upload functionality.
+
+**2. File Upload & Encryption**
+
+![Encrypting and Uploading](docs/screenshot/encrypting-uploading-screen.png)
+
+The application encrypts files client-side before uploading to the server for additional envelope encryption.
+
+**3. Upload Complete**
+
+![Upload Complete](docs/screenshot/uploaded-screen.png)
+
+Successful upload confirmation with file details and verification status.
+
+**4. S3 Storage Structure**
+
+![S3 File Storage](docs/screenshot/s3-files.png)
+
+Files are stored in S3/Tigris with organized folder structure: `uploads/{email}/{uuid}/{filename}.enc` plus `metadata.json`
+
+### File Management Operations
+
+The application supports complete file lifecycle management:
+
+- ✅ **Upload**: Client-side encryption → Server-side envelope encryption → S3 storage
+- ✅ **List**: View all uploaded files with metadata (size, timestamp, verification status)
+- ✅ **Delete**: Remove files with both encrypted data and metadata cleanup
+- ✅ **Download**: Decrypt and download original files (via decrypt API)
+
+Each file operation is authenticated and tracked, with comprehensive logging and error handling.
+
 ## Quick Start
 
 ### Prerequisites
@@ -521,12 +560,139 @@ The application provides a RESTful API for passphrase validation and file upload
 
 Use the Swagger UI to explore and test all available endpoints with interactive documentation.
 
+## File Operations
+
+### Upload File
+
+**Endpoint**: `POST /whisper/api/upload`
+
+**Process Flow**:
+1. User selects file in Angular frontend (see [passphrase-screen.png](docs/screenshot/passphrase-screen.png))
+2. Client-side encryption with AES-256-GCM (see [encrypting-uploading-screen.png](docs/screenshot/encrypting-uploading-screen.png))
+3. Upload encrypted file to backend
+4. Backend verifies and re-encrypts with random DEK
+5. Create envelope metadata with encrypted DEK
+6. Store both encrypted file and metadata in S3 (see [s3-files.png](docs/screenshot/s3-files.png))
+7. Publish event to NATS JetStream
+8. Return success response (see [uploaded-screen.png](docs/screenshot/uploaded-screen.png))
+
+**Request**:
+```bash
+curl -X POST "http://localhost:8080/whisper/api/upload" \
+  -F "file=@audio.mp3" \
+  -F "email=user@example.com"
+```
+
+**Response**:
+```json
+{
+  "message": "File uploaded successfully",
+  "key": "uploads/user@example.com/uuid/audio.mp3.enc",
+  "verified": true,
+  "originalSize": 1048576
+}
+```
+
+### List Files
+
+**Endpoint**: `GET /whisper/api/files`
+
+**Headers**: `X-Session-Token: {session-token}`
+
+Lists all files for the authenticated user with metadata including:
+- Original filename
+- File ID (UUID)
+- File sizes (original and encrypted)
+- Verification status
+- Upload timestamp
+- Encryption algorithm details
+
+**Request**:
+```bash
+curl -X GET "http://localhost:8080/whisper/api/files" \
+  -H "X-Session-Token: your-session-token"
+```
+
+**Response**:
+```json
+[
+  {
+    "version": "1.0",
+    "kek": "base64-encoded-encrypted-dek",
+    "algorithm": "AES-GCM-256",
+    "original_filename": "audio.mp3",
+    "file_id": "550e8400-e29b-41d4-a716-446655440000",
+    "original_size": 1048576,
+    "encrypted_size": 1048604,
+    "verification_status": "VERIFIED",
+    "timestamp": 1737904200000
+  }
+]
+```
+
+### Delete File
+
+**Endpoint**: `DELETE /whisper/api/files`
+
+**Headers**: `X-Session-Token: {session-token}`
+
+**Query Parameters**:
+- `fileId`: UUID of the file (from list response)
+- `fileName`: Original filename (e.g., `audio.mp3`)
+
+Deletes both the encrypted file and metadata from S3 storage. The frontend automatically:
+- Shows confirmation dialog
+- Removes file from list on success
+- Updates UI immediately with change detection
+
+**Request**:
+```bash
+curl -X DELETE "http://localhost:8080/whisper/api/files?fileId=550e8400-e29b-41d4-a716-446655440000&fileName=audio.mp3" \
+  -H "X-Session-Token: your-session-token"
+```
+
+**Response**:
+```json
+{
+  "message": "File deleted successfully",
+  "fileId": "550e8400-e29b-41d4-a716-446655440000",
+  "fileName": "audio.mp3",
+  "deleted": true,
+  "s3Key": "uploads/user@example.com/550e8400-e29b-41d4-a716-446655440000/audio.mp3.enc"
+}
+```
+
+**What Gets Deleted**:
+1. Encrypted file: `uploads/{email}/{fileId}/{fileName}.enc`
+2. Metadata file: `uploads/{email}/{fileId}/metadata.json`
+
+**Important Notes**:
+- Frontend sends original filename (e.g., `audio.mp3`)
+- Backend automatically appends `.enc` extension for S3 lookup
+- Both encrypted data and metadata are removed for complete cleanup
+- Operation requires valid session token
+- Deletion is immediate and cannot be undone
+
+**Frontend Integration**:
+The Angular frontend provides a user-friendly delete button for each file in the list. On successful deletion:
+- File immediately disappears from the list
+- No page refresh required
+- Success message displayed to user
+- Error handling for session expiration and failures
+
+See implementation details in [DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md)
+
 ## Documentation
 
 ### Getting Started
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup guide
 - **[API_TESTING.md](API_TESTING.md)** - API testing guide with examples
 - **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](ENVELOPE_ENCRYPTION_ARCHITECTURE.md)** - Encryption architecture details
+
+### File Operations
+- **[DELETE_FILE_IMPLEMENTATION.md](docs/DELETE_FILE_IMPLEMENTATION.md)** - Complete delete functionality documentation
+- **[BUG_FIX_DELETE_EXTENSION.md](docs/BUG_FIX_DELETE_EXTENSION.md)** - File extension bug fix details
+- **[ANGULAR_LIST_UPDATE_FIX.md](docs/ANGULAR_LIST_UPDATE_FIX.md)** - Angular change detection fix for file list
 
 ### NATS JetStream Integration (F#/.NET/Python/Go Consumers)
 - **[NATS_COMMANDS.md](NATS_COMMANDS.md)** - NATS CLI commands and durable consumer setup
