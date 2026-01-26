@@ -589,13 +589,6 @@ Both backend and frontend support hot reload in dev mode:
 docker build -f src/main/docker/Dockerfile.jvm -t quarks-tigris .
 ```
 
-## Troubleshooting
-
-### Port Already in Use
-```bash
-# Kill process on port 8080
-lsof -ti:8080 | xargs kill -9
-```
 
 ### S3 Connection Issues
 Check your endpoint configuration in `application.properties`:
