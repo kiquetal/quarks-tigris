@@ -75,6 +75,12 @@ byte[] ciphertext = Arrays.copyOfRange(data, 28, data.length);
 SecretKey key = deriveKeyFromPassphrase(appPassphrase, salt);
 
 // 3. Decrypt and verify
+Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+// The '128' specifies a 128-bit (16-byte) authentication tag, the standard for GCM.
+GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+cipher.init(Cipher.DECRYPT_MODE, key, spec); // <-- Key is used here
+// doFinal automatically verifies the GCM authentication tag (the last 16 bytes of the ciphertext).
+// If verification fails, it throws AEADBadTagException.
 byte[] plaintext = cipher.doFinal(ciphertext);  // ✓ Verified!
 ```
 
@@ -86,19 +92,15 @@ byte[] dek = new byte[32];  // 256 bits
 secureRandom.nextBytes(dek);
 
 // 2. Encrypt plaintext with DEK
-byte[] dekIV = new byte[12];
-secureRandom.nextBytes(dekIV);
-byte[] encryptedData = encryptAES_GCM(plaintext, dek, dekIV);
-// Format: [12 bytes IV][encrypted data + GCM tag]
+// This is handled by the encryptWithDekStreaming method in CryptoService
+StreamingDataEncryptionResult encryptionResult = cryptoService.encryptWithDekStreaming(plaintextStream);
+// encryptionResult.encryptedStream contains: [12 bytes IV][encrypted data + GCM tag]
+// encryptionResult.dek contains the generated DEK
 
 // 3. Encrypt DEK with Master Key (KEK)
-byte[] kekIV = new byte[12];
-secureRandom.nextBytes(kekIV);
-byte[] encryptedDEK = encryptAES_GCM(dek, masterKey, kekIV);
-// Format: [12 bytes IV][encrypted DEK + GCM tag]
-
-// 4. Base64 encode encrypted DEK for JSON storage
-String encryptedDEKBase64 = Base64.encode(encryptedDEK);
+// This is handled by the createEnvelopeDek method in CryptoService
+String encryptedDEKBase64 = cryptoService.createEnvelopeDek(encryptionResult.dek);
+// The result is a Base64 string containing: [12 bytes IV][encrypted DEK + GCM tag]
 ```
 
 ## Envelope Metadata Format
@@ -178,7 +180,7 @@ byte[] dek = cryptoService.decryptDataKey(metadata.encryptedDek);
 byte[] encryptedData = s3.getObject(dataKey);
 
 // 4. Decrypt the data using DEK
-byte[] plaintext = cryptoService.decryptEnvelopeData(encryptedData, metadata.encryptedDek);
+byte[] plaintext = cryptoService.decryptEnvelopeData(encryptedData, dek);
 ```
 
 ## Security Features

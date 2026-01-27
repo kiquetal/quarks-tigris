@@ -550,7 +550,7 @@ See [API_TESTING.md](API_TESTING.md) for request/response examples.
 ### Getting Started
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup guide
 - **[API_TESTING.md](API_TESTING.md)** - API testing guide with examples
-- **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](ENVELOPE_ENCRYPTION_ARCHITECTURE.md)** - Encryption architecture details
+- **[ENVELOPE_ENCRYPTION_ARCHITECTURE.md](docs/archive/ENVELOPE_ENCRYPTION.md)** - Encryption architecture details
 
 ### NATS JetStream Integration (F#/.NET/Python/Go Consumers)
 - **[NATS_COMMANDS.md](NATS_COMMANDS.md)** - NATS CLI commands and durable consumer setup
