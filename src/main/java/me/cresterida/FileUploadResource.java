@@ -151,9 +151,6 @@ public class FileUploadResource {
                             metadataJson
                         );
 
-                        // Publish event to NATS for downstream processing
-                        // Only S3 location - consumer downloads full metadata.json
-                        publishToNats(email, fileId, uploadResult);
 
                         logger.info("=".repeat(80));
 

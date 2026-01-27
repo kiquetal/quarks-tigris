@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 
 /**
@@ -62,15 +63,15 @@ public class S3StorageService
     }
 
     /**
-     * Upload encrypted file data to S3.
+     * Upload encrypted file data to S3 from an InputStream.
      *
-     * @param key      S3 object key
-     * @param filePath Path to the file to upload
-     * @param fileSize Size of the file in bytes
+     * @param key        S3 object key
+     * @param inputStream InputStream of the file to upload
+     * @param fileSize   Size of the file in bytes
      */
-    public void uploadEncryptedFile(String key, Path filePath, long fileSize)
+    public void uploadEncryptedFile(String key, InputStream inputStream, long fileSize)
     {
-        System.out.println("Uploading encrypted data to S3...");
+        logger.info("Uploading encrypted data to S3 via stream...");
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -79,9 +80,9 @@ public class S3StorageService
                 .contentLength(fileSize)
                 .build();
 
-        s3.putObject(request, RequestBody.fromFile(filePath));
+        s3.putObject(request, RequestBody.fromInputStream(inputStream, fileSize));
 
-        System.out.println("✓ DEK-encrypted data uploaded to S3: " + key);
+        logger.info("✓ DEK-encrypted data uploaded to S3: {}", key);
     }
 
     /**
@@ -92,7 +93,7 @@ public class S3StorageService
      */
     public void uploadMetadata(String key, String metadataJson)
     {
-        System.out.println("Uploading metadata to S3...");
+        logger.info("Uploading metadata to S3...");
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -102,7 +103,7 @@ public class S3StorageService
 
         s3.putObject(request, RequestBody.fromString(metadataJson));
 
-        System.out.println("✓ Envelope metadata uploaded to S3: " + key);
+        logger.info("✓ Envelope metadata uploaded to S3: {}", key);
     }
 
     /**
@@ -111,7 +112,7 @@ public class S3StorageService
      * @param email             User email
      * @param fileName          Original file name
      * @param fileId            Unique file identifier
-     * @param encryptedFilePath Path to encrypted file
+     * @param encryptedInputStream Stream of the encrypted file
      * @param encryptedFileSize Size of encrypted file
      * @param metadataJson      Metadata JSON content
      * @return UploadResult with the S3 keys used
@@ -146,7 +147,7 @@ public class S3StorageService
      */
     public byte[] downloadFile(String key)
     {
-        System.out.println("Downloading file from S3: " + key);
+        logger.info("Downloading file from S3: {}", key);
 
         try (var response = s3.getObject(builder -> builder
                 .bucket(bucketName)
