@@ -99,6 +99,21 @@ public class SessionManager {
     }
 
     /**
+     * Retrieves passphrase for a given email (reverse lookup)
+     * @param email User's email
+     * @return Passphrase if found, null otherwise
+     */
+    public String getPassphraseForEmail(String email) {
+        // Reverse lookup: find passphrase for email
+        for (Map.Entry<String, String> entry : passphraseToEmail.entrySet()) {
+            if (entry.getValue().equals(email)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Registers a new passphrase->email mapping (for demo purposes)
      */
     public void registerUser(String passphrase, String email) {

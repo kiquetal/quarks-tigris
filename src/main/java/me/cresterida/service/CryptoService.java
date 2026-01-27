@@ -1,7 +1,10 @@
 package me.cresterida.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -30,6 +33,8 @@ import java.util.Base64;
 @ApplicationScoped
 public class CryptoService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CryptoService.class);
+
     // Encryption parameters matching Angular frontend
     private static final int SALT_LENGTH = 16;
     private static final int IV_LENGTH = 12;
@@ -45,8 +50,8 @@ public class CryptoService {
     @ConfigProperty(name = "encryption.verify.enabled", defaultValue = "true")
     boolean verificationEnabled;
 
-    @ConfigProperty(name = "app.passphrase", defaultValue = "your-secret-passphrase")
-    String appPassphrase;
+    @Inject
+    SessionManager sessionManager;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -111,16 +116,23 @@ public class CryptoService {
      *
      * Process:
      * 1. Extract salt, IV, and encrypted data from Angular encryption
-     * 2. Decrypt using the application passphrase to verify and get plaintext
+     * 2. Decrypt using the user's passphrase to verify and get plaintext
      *
      * @param encryptedData The encrypted data from Angular (salt + IV + encrypted content)
+     * @param email The user's email to retrieve their passphrase
      * @return DecryptionResult containing plaintext data
      */
-    public DecryptionResult verifyAndDecrypt(byte[] encryptedData)
+    public DecryptionResult verifyAndDecrypt(byte[] encryptedData, String email)
             throws GeneralSecurityException, IOException {
 
-        System.out.println("Starting verification and decryption...");
-        System.out.println("Input data size: " + encryptedData.length + " bytes");
+        logger.debug("Starting verification and decryption for user: {}", email);
+        logger.debug("Input data size: {} bytes", encryptedData.length);
+
+        // Get the user's passphrase from SessionManager
+        String passphrase = getPassphraseForEmail(email);
+        if (passphrase == null) {
+            throw new GeneralSecurityException("No passphrase found for email: " + email);
+        }
 
         // Parse the encrypted data structure from Angular
         if (encryptedData.length < SALT_LENGTH + IV_LENGTH) {
@@ -131,20 +143,20 @@ public class CryptoService {
         byte[] iv = Arrays.copyOfRange(encryptedData, SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
         byte[] ciphertext = Arrays.copyOfRange(encryptedData, SALT_LENGTH + IV_LENGTH, encryptedData.length);
 
-        System.out.println("Extracted - Salt: " + SALT_LENGTH + " bytes, IV: " + IV_LENGTH +
-                         " bytes, Ciphertext: " + ciphertext.length + " bytes");
+        logger.debug("Extracted - Salt: {} bytes, IV: {} bytes, Ciphertext: {} bytes",
+                SALT_LENGTH, IV_LENGTH, ciphertext.length);
 
-        // Decrypt the data using the application passphrase to verify integrity
+        // Decrypt the data using the user's passphrase to verify integrity
         byte[] decryptedData;
         boolean verified = false;
 
         try {
-            System.out.println("Decrypting with application passphrase for verification...");
-            decryptedData = decryptWithPassphrase(ciphertext, appPassphrase, salt, iv);
+            logger.debug("Decrypting with user passphrase for verification...");
+            decryptedData = decryptWithPassphrase(ciphertext, passphrase, salt, iv);
             verified = true;
-            System.out.println("✓ Decryption successful! Original file size: " + decryptedData.length + " bytes");
+            logger.info("Decryption successful! Original file size: {} bytes", decryptedData.length);
         } catch (Exception e) {
-            System.err.println("✗ Decryption failed: " + e.getMessage());
+            logger.error("Decryption failed: {}", e.getMessage(), e);
             throw new GeneralSecurityException("Failed to decrypt and verify data: " + e.getMessage(), e);
         }
 
@@ -354,12 +366,19 @@ public class CryptoService {
      *
      * @param inputStream The input stream with encrypted data from Angular
      * @param outputStream The output stream to write decrypted data to
+     * @param email The user's email to retrieve their passphrase
      * @return StreamingDecryptionResult with size and verification status
      */
-    public StreamingDecryptionResult verifyAndDecryptStreaming(InputStream inputStream, OutputStream outputStream)
+    public StreamingDecryptionResult verifyAndDecryptStreaming(InputStream inputStream, OutputStream outputStream, String email)
             throws GeneralSecurityException, IOException {
 
-        System.out.println("Starting streaming verification and decryption...");
+        logger.debug("Starting streaming verification and decryption for user: {}", email);
+
+        // Get the user's passphrase from SessionManager
+        String passphrase = getPassphraseForEmail(email);
+        if (passphrase == null) {
+            throw new GeneralSecurityException("No passphrase found for email: " + email);
+        }
 
         // Read salt and IV from the beginning of the stream
         byte[] salt = new byte[SALT_LENGTH];
@@ -372,10 +391,10 @@ public class CryptoService {
             throw new IllegalArgumentException("Invalid encrypted data: too short");
         }
 
-        System.out.println("Extracted - Salt: " + SALT_LENGTH + " bytes, IV: " + IV_LENGTH + " bytes");
+        logger.debug("Extracted - Salt: {} bytes, IV: {} bytes", SALT_LENGTH, IV_LENGTH);
 
         // Derive key from passphrase
-        SecretKey key = deriveKeyFromPassphrase(appPassphrase, salt);
+        SecretKey key = deriveKeyFromPassphrase(passphrase, salt);
 
         // Initialize cipher for decryption
         Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
@@ -389,7 +408,7 @@ public class CryptoService {
         boolean verified = false;
 
         try {
-            System.out.println("Decrypting in streaming mode...");
+            logger.debug("Decrypting in streaming mode...");
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 byte[] decryptedChunk = cipher.update(buffer, 0, bytesRead);
                 if (decryptedChunk != null && decryptedChunk.length > 0) {
@@ -406,15 +425,28 @@ public class CryptoService {
             }
 
             verified = true;
-            System.out.println("✓ Streaming decryption successful! Total decrypted: " + totalDecrypted + " bytes");
+            logger.info("Streaming decryption successful! Total decrypted: {} bytes", totalDecrypted);
         } catch (Exception e) {
-            System.err.println("✗ Streaming decryption failed: " + e.getMessage());
+            logger.error("Streaming decryption failed: {}", e.getMessage(), e);
             throw new GeneralSecurityException("Failed to decrypt and verify data: " + e.getMessage(), e);
         } finally {
             Arrays.fill(buffer, (byte) 0);
         }
 
         return new StreamingDecryptionResult(totalDecrypted, verified);
+    }
+
+    /**
+     * Retrieves the passphrase for a given email.
+     * This looks up the passphrase from the SessionManager's in-memory map.
+     *
+     * @param email The user's email
+     * @return The passphrase, or null if not found
+     */
+    private String getPassphraseForEmail(String email) {
+        // We need to reverse lookup: find passphrase for this email
+        // SessionManager has passphrase->email mapping, so we need to iterate
+        return sessionManager.getPassphraseForEmail(email);
     }
 
     /**

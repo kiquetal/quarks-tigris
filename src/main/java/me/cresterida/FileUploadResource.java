@@ -106,7 +106,7 @@ public class FileUploadResource {
                      java.io.FileOutputStream decryptedOutput = new java.io.FileOutputStream(tempDecrypted.toFile())) {
 
                     CryptoService.StreamingDecryptionResult decryptResult =
-                        cryptoService.verifyAndDecryptStreaming(encryptedInput, decryptedOutput);
+                        cryptoService.verifyAndDecryptStreaming(encryptedInput, decryptedOutput, email);
 
                     logger.info("Decryption verification: {}", decryptResult.verified ? "SUCCESS" : "FAILED");
                     logger.debug("Decrypted size: {} bytes", decryptResult.size);
