@@ -142,14 +142,20 @@ public class FileUploadResource {
                         logger.debug("Created envelope metadata JSON:\n{}", metadataJson);
 
                         // Upload encrypted file and metadata to S3
-                        S3StorageService.UploadResult uploadResult = s3StorageService.uploadFileAndMetadata(
-                            email,
-                            file.fileName(),
-                            fileId,
-                            tempEncrypted,
-                            dekResult.encryptedSize,
-                            metadataJson
-                        );
+                        S3StorageService.UploadResult uploadResult;
+                        try (FileInputStream tempEncryptedStream = new FileInputStream(tempEncrypted.toFile())) {
+                            uploadResult = s3StorageService.uploadFileAndMetadata(
+                                email,
+                                file.fileName(),
+                                fileId,
+                                tempEncryptedStream,
+                                dekResult.encryptedSize,
+                                metadataJson
+                            );
+                        }
+
+                        // Publish event to NATS for downstream processing
+                        publishToNats(email, fileId, uploadResult);
 
 
                         logger.info("=".repeat(80));
