@@ -22,7 +22,7 @@ import java.nio.file.Path;
 public class S3StorageService
 {
 
-    private Logger logger = LoggerFactory.getLogger(S3StorageService.class);
+    private static final Logger logger = LoggerFactory.getLogger(S3StorageService.class);
     @Inject
     S3Client s3;
 
@@ -165,7 +165,7 @@ public class S3StorageService
      */
     public String downloadMetadata(String key)
     {
-        System.out.println("Downloading metadata from S3: " + key);
+        logger.info("Downloading metadata from S3: {}", key);
 
         try (var response = s3.getObject(builder -> builder
                 .bucket(bucketName)
