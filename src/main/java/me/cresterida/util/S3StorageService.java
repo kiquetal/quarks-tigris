@@ -117,12 +117,12 @@ public class S3StorageService
      * @return UploadResult with the S3 keys used
      */
     public UploadResult uploadFileAndMetadata(String email, String fileName, String fileId,
-                                              Path encryptedFilePath, long encryptedFileSize,
+                                              InputStream encryptedInputStream, long encryptedFileSize,
                                               String metadataJson)
     {
         UploadResult result = generateKeys(email, fileName, fileId);
 
-        uploadEncryptedFile(result.dataKey, encryptedFilePath, encryptedFileSize);
+        uploadEncryptedFile(result.dataKey, encryptedInputStream, encryptedFileSize);
         uploadMetadata(result.metadataKey, metadataJson);
 
         return result;
