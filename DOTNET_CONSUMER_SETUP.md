@@ -68,8 +68,7 @@ nats consumer add FILE_UPLOADS file_processor \
   --max-deliver=-1 \
   --max-pending=100 \
   --wait=30s \
-  --replay instant \
-  --max-ack-pending=100
+  --replay instant
 ```
 
 ### Verify Consumer
@@ -365,7 +364,8 @@ nats consumer add FILE_UPLOADS file_processor \
   --deliver all \
   --max-deliver=-1 \
   --max-pending=100 \
-  --wait=30s
+  --wait=30s \
+  --replay instant
 ```
 
 ### Connection Refused
