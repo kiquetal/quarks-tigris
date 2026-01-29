@@ -478,7 +478,7 @@ APP_PASSPHRASE=your-secret-passphrase
 ENCRYPTION_MASTER_KEY=base64-encoded-master-key
 
 # NATS Configuration
-QUARKUS_MESSAGING_NATS_CONNECTION_SERVERS=nats://localhost:4222
+NATS_SERVERS=nats://localhost:4222
 ```
 
 ### Generate Master Key
