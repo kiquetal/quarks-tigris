@@ -470,7 +470,7 @@ For complete setup instructions and code examples, see:
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=auto
-S3_ENDPOINT_OVERRIDE=https://fly.storage.tigris.dev
+S3_ENDPOINT_URL=https://fly.storage.tigris.dev
 S3_BUCKET_NAME=your-bucket-name
 
 # Encryption
@@ -602,7 +602,7 @@ docker build -f src/main/docker/Dockerfile.jvm -t quarks-tigris .
 ### S3 Connection Issues
 Check your endpoint configuration in `application.properties`:
 ```properties
-quarkus.s3.endpoint-override=${S3_ENDPOINT_OVERRIDE}
+quarkus.s3.endpoint-override=${S3_ENDPOINT_URL}
 quarkus.s3.path-style-access=true
 ```
 
