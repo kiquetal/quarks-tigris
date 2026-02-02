@@ -91,7 +91,10 @@ export class FileList implements OnInit {
     this.apiService.getFiles(sessionToken).subscribe({
       next: (files) => {
         console.log('Files retrieved successfully:', files.length, 'files');
-        this.files = files;
+
+        // Sort files by timestamp in descending order (newest first)
+        this.files = files.sort((a, b) => b.timestamp - a.timestamp);
+
         this.isLoading = false;
         this.cdr.detectChanges(); // Force UI update
       },
