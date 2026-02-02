@@ -184,13 +184,38 @@ public class DecryptResource {
     @GET
     @Path("/metadata")
     @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get file metadata",
+               description = "Retrieve metadata for an encrypted file from S3")
+    @APIResponse(responseCode = "200", description = "Metadata retrieved successfully")
+    @APIResponse(responseCode = "400", description = "Invalid request parameters")
+    @APIResponse(responseCode = "404", description = "Metadata not found")
+    @APIResponse(responseCode = "500", description = "Metadata retrieval error")
     public Response obtainMetadata(@QueryParam("email") String email, @QueryParam("uuid") String uuid ) {
 
-        try
-        {
+        // Validate inputs
+        if (email == null || email.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("Email is required"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+
+        if (uuid == null || uuid.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("UUID is required"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+
+        System.out.println("=".repeat(80));
+        System.out.println("Fetching metadata for email: " + email + ", UUID: " + uuid);
+        System.out.println("=".repeat(80));
+
+        try {
             String metadataKey = "uploads/" + email + "/" + uuid + "/metadata.json";
             System.out.println("Fetching metadata from: " + metadataKey);
-            // download from s3
+
+            // Download metadata from S3
             GetObjectRequest metadataRequest = GetObjectRequest.builder()
                     .bucket(s3StorageService.getBucketName())
                     .key(metadataKey)
@@ -202,16 +227,21 @@ public class DecryptResource {
                 metadata = objectMapper.readValue(metadataStream, EnvelopeMetadata.class);
                 System.out.println("✓ Metadata retrieved");
                 System.out.println("  Original filename: " + metadata.originalFilename);
+                System.out.println("  Original size: " + metadata.originalSize + " bytes");
+                System.out.println("=".repeat(80));
 
                 return Response.ok(metadata)
                         .type(MediaType.APPLICATION_JSON)
                         .build();
             }
 
-
-        }
-        catch (Exception e)
-        {
+        } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
+            System.err.println("✗ Metadata not found in S3: " + e.getMessage());
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("Metadata not found: " + e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (Exception e) {
             System.err.println("✗ Metadata retrieval error: " + e.getMessage());
             e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -219,8 +249,6 @@ public class DecryptResource {
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
-
-
 
     }
 }
