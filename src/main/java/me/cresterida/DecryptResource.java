@@ -277,9 +277,14 @@ public class DecryptResource {
 
             try (ResponseInputStream<GetObjectResponse> metadataStream = s3.getObject(metadataRequest)) {
                 metadata = objectMapper.readValue(metadataStream, EnvelopeMetadata.class);
+
+                // Set the fileId (UUID) - it's not stored in metadata.json, but we have it from the request
+                metadata.fileId = uuid;
+
                 log.info("✓ Metadata retrieved");
                 log.info("  Original filename: {}", metadata.originalFilename);
                 log.info("  Original size: {} bytes", metadata.originalSize);
+                log.info("  File ID: {}", metadata.fileId);
                 log.info("=".repeat(80));
 
                 return Response.ok(metadata)
