@@ -1,0 +1,343 @@
+/* Dialog Backdrop */
+.dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dialog Container */
+.dialog-container {
+  background: rgba(26, 31, 58, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dialog Header */
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-icon {
+  width: 28px;
+  height: 28px;
+  color: #667eea;
+  filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.5));
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.close-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.close-button svg {
+  width: 20px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.close-button:hover {
+  background: rgba(245, 87, 108, 0.2);
+  border-color: rgba(245, 87, 108, 0.4);
+  transform: rotate(90deg);
+}
+
+.close-button:hover svg {
+  color: #f5576c;
+}
+
+/* Dialog Body */
+.dialog-body {
+  padding: 30px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dialog-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialog-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.dialog-body::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 10px;
+}
+
+.dialog-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
+}
+
+/* Metadata Sections */
+.metadata-section {
+  margin-bottom: 30px;
+}
+
+.metadata-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-icon {
+  font-size: 24px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Metadata Items */
+.metadata-item {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metadata-item label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metadata-item .value {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.9);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.value.monospace {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.value.highlight {
+  color: #4facfe;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.value.badge {
+  display: inline-block;
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.value.badge.verified {
+  background: rgba(72, 187, 120, 0.2);
+  color: #48bb78;
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+/* Value with Copy Button */
+.value-with-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.copy-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.copy-button svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.copy-button:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.4);
+  transform: scale(1.1);
+}
+
+.copy-button:hover svg {
+  color: #667eea;
+}
+
+.copy-button:active {
+  transform: scale(0.95);
+}
+
+/* Metadata Grid */
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* Dialog Footer */
+.dialog-footer {
+  padding: 20px 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dialog-button {
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid;
+}
+
+.dialog-button.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.dialog-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.dialog-button.primary:active {
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dialog-container {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .dialog-header {
+    padding: 20px;
+  }
+
+  .dialog-body {
+    padding: 20px;
+  }
+
+  .dialog-footer {
+    padding: 16px 20px;
+  }
+
+  .metadata-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-header h2 {
+    font-size: 20px;
+  }
+
+  .section-header h3 {
+    font-size: 16px;
+  }
+}

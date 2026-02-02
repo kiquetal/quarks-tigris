@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 import { AuthService } from '../auth.service';
+import { MetadataDialog, MetadataDialogData } from '../metadata-dialog/metadata-dialog';
 
 interface FileMetadata {
   version: string;
@@ -19,7 +20,7 @@ interface FileMetadata {
 
 @Component({
   selector: 'app-file-list',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MetadataDialog],
   templateUrl: './file-list.html',
   styleUrl: './file-list.css',
 })
@@ -28,6 +29,10 @@ export class FileList implements OnInit {
   files: FileMetadata[] = [];
   isLoading = false;
   errorMessage = '';
+
+  // Dialog state
+  showMetadataDialog = false;
+  metadataDialogData: MetadataDialogData | null = null;
 
   constructor(
     private apiService: ApiService,
