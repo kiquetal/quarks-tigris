@@ -1,0 +1,112 @@
+<div class="dialog-backdrop" *ngIf="isVisible" (click)="onBackdropClick($event)">
+  <div class="dialog-container" *ngIf="metadata">
+    <!-- Dialog Header -->
+    <div class="dialog-header">
+      <div class="dialog-title">
+        <svg class="title-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="13 2 13 9 20 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h2>File Metadata</h2>
+      </div>
+      <button class="close-button" (click)="onClose()">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Dialog Body -->
+    <div class="dialog-body">
+      <!-- File Name Section -->
+      <div class="metadata-section">
+        <div class="section-header">
+          <span class="section-icon">📁</span>
+          <h3>File Information</h3>
+        </div>
+        <div class="metadata-item">
+          <label>Filename:</label>
+          <div class="value-with-copy">
+            <span class="value">{{ metadata.original_filename }}</span>
+            <button class="copy-button" (click)="copyToClipboard(metadata.original_filename)" title="Copy to clipboard">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="metadata-item">
+          <label>File ID:</label>
+          <div class="value-with-copy">
+            <span class="value monospace">{{ metadata.file_id }}</span>
+            <button class="copy-button" (click)="copyToClipboard(metadata.file_id)" title="Copy to clipboard">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="metadata-item">
+          <label>Uploaded:</label>
+          <span class="value">{{ formatDate(metadata.timestamp) }}</span>
+        </div>
+      </div>
+
+      <!-- Size Section -->
+      <div class="metadata-section">
+        <div class="section-header">
+          <span class="section-icon">📦</span>
+          <h3>Size Information</h3>
+        </div>
+        <div class="metadata-grid">
+          <div class="metadata-item">
+            <label>Original Size:</label>
+            <span class="value highlight">{{ formatFileSize(metadata.original_size) }}</span>
+          </div>
+          <div class="metadata-item">
+            <label>Encrypted Size:</label>
+            <span class="value highlight">{{ formatFileSize(metadata.encrypted_size) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Section -->
+      <div class="metadata-section">
+        <div class="section-header">
+          <span class="section-icon">🔐</span>
+          <h3>Security Details</h3>
+        </div>
+        <div class="metadata-grid">
+          <div class="metadata-item">
+            <label>Algorithm:</label>
+            <span class="value badge">{{ metadata.algorithm }}</span>
+          </div>
+          <div class="metadata-item">
+            <label>Version:</label>
+            <span class="value badge">{{ metadata.version }}</span>
+          </div>
+          <div class="metadata-item">
+            <label>Status:</label>
+            <span class="value badge" [class.verified]="metadata.verification_status === 'VERIFIED'">
+              {{ metadata.verification_status }}
+            </span>
+          </div>
+          <div class="metadata-item">
+            <label>KEK Length:</label>
+            <span class="value">{{ metadata.kek ? metadata.kek.length : 0 }} characters</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog Footer -->
+    <div class="dialog-footer">
+      <button class="dialog-button primary" (click)="onClose()">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
