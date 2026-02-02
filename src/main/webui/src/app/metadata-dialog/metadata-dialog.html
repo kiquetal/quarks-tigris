@@ -1,5 +1,13 @@
 <div class="dialog-backdrop" *ngIf="isVisible" (click)="onBackdropClick($event)">
-  <div class="dialog-container" *ngIf="metadata">
+  <div class="dialog-container">
+    <!-- Show loading state if no metadata yet -->
+    <div *ngIf="!metadata" class="dialog-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading metadata...</p>
+    </div>
+
+    <!-- Show content when metadata is available -->
+    <ng-container *ngIf="metadata">
     <!-- Dialog Header -->
     <div class="dialog-header">
       <div class="dialog-title">
@@ -108,5 +116,6 @@
         Close
       </button>
     </div>
+    </ng-container>
   </div>
 </div>
