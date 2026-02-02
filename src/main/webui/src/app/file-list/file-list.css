@@ -421,6 +421,19 @@
   height: 18px;
 }
 
+.info-button {
+  background: rgba(160, 174, 192, 0.15);
+  border-color: rgba(160, 174, 192, 0.4);
+  color: #a0aec0;
+}
+
+.info-button:hover {
+  background: rgba(160, 174, 192, 0.3);
+  border-color: #a0aec0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(160, 174, 192, 0.3);
+}
+
 .download-button {
   background: rgba(79, 172, 254, 0.15);
   border-color: rgba(79, 172, 254, 0.4);

@@ -66,4 +66,15 @@ export class ApiService {
     };
     return this.http.delete(`${this.apiUrl}/files`, { headers, params });
   }
+
+  getMetadata(sessionToken: string, email: string, uuid: string): Observable<FileMetadata> {
+    const headers = new HttpHeaders({
+      'X-Session-Token': sessionToken
+    });
+    const params = {
+      email: email,
+      uuid: uuid
+    };
+    return this.http.get<FileMetadata>(`${this.apiUrl}/decrypt/metadata`, { headers, params });
+  }
 }

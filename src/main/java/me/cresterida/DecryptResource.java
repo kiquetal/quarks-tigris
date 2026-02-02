@@ -2,6 +2,7 @@ package me.cresterida;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
@@ -11,6 +12,7 @@ import jakarta.ws.rs.core.StreamingOutput;
 import me.cresterida.dto.ErrorResponse;
 import me.cresterida.model.EnvelopeMetadata;
 import me.cresterida.service.CryptoService;
+import me.cresterida.service.SessionManager;
 import me.cresterida.util.S3StorageService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -46,6 +48,9 @@ public class DecryptResource {
     @Inject
     S3StorageService s3StorageService;
 
+    @Inject
+    SessionManager sessionManager;
+
     @ConfigProperty(name = "decrypt.download.path", defaultValue = "./downloads")
     String downloadPath;
 
@@ -57,11 +62,23 @@ public class DecryptResource {
                description = "Decrypt a file from S3 and download it. In dev mode, also saves to local folder.")
     @APIResponse(responseCode = "200", description = "File decrypted successfully")
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
+    @APIResponse(responseCode = "401", description = "Unauthorized - Invalid or missing session token")
     @APIResponse(responseCode = "404", description = "File not found")
     @APIResponse(responseCode = "500", description = "Decryption error")
     public Response decryptFile(
+            @HeaderParam("X-Session-Token") String sessionToken,
             @QueryParam("email") String email,
             @QueryParam("uuid") String uuid) {
+
+        // Validate session token
+        String sessionEmail = sessionManager.validateSession(sessionToken);
+        if (sessionEmail == null) {
+            log.warn("Unauthorized decrypt attempt - invalid or missing session token");
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(new ErrorResponse("Unauthorized: Invalid or missing session token"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
 
         // Validate inputs
         if (email == null || email.isEmpty()) {
@@ -74,6 +91,15 @@ public class DecryptResource {
         if (uuid == null || uuid.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("UUID is required"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+
+        // Verify that the session email matches the requested email
+        if (!sessionEmail.equals(email)) {
+            log.warn("Unauthorized decrypt attempt - session email '{}' doesn't match requested email '{}'", sessionEmail, email);
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(new ErrorResponse("Unauthorized: Cannot access files for other users"))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
@@ -191,9 +217,23 @@ public class DecryptResource {
                description = "Retrieve metadata for an encrypted file from S3")
     @APIResponse(responseCode = "200", description = "Metadata retrieved successfully")
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
+    @APIResponse(responseCode = "401", description = "Unauthorized - Invalid or missing session token")
     @APIResponse(responseCode = "404", description = "Metadata not found")
     @APIResponse(responseCode = "500", description = "Metadata retrieval error")
-    public Response obtainMetadata(@QueryParam("email") String email, @QueryParam("uuid") String uuid ) {
+    public Response obtainMetadata(
+            @HeaderParam("X-Session-Token") String sessionToken,
+            @QueryParam("email") String email,
+            @QueryParam("uuid") String uuid) {
+
+        // Validate session token
+        String sessionEmail = sessionManager.validateSession(sessionToken);
+        if (sessionEmail == null) {
+            log.warn("Unauthorized metadata request - invalid or missing session token");
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(new ErrorResponse("Unauthorized: Invalid or missing session token"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
 
         // Validate inputs
         if (email == null || email.isEmpty()) {
@@ -206,6 +246,15 @@ public class DecryptResource {
         if (uuid == null || uuid.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("UUID is required"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+
+        // Verify that the session email matches the requested email
+        if (!sessionEmail.equals(email)) {
+            log.warn("Unauthorized metadata request - session email '{}' doesn't match requested email '{}'", sessionEmail, email);
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(new ErrorResponse("Unauthorized: Cannot access metadata for other users"))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }

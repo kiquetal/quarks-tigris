@@ -201,6 +201,67 @@ export class FileList implements OnInit {
     return file.file_id;
   }
 
+  viewMetadata(file: FileMetadata) {
+    const sessionToken = sessionStorage.getItem('sessionToken');
+    if (!sessionToken) {
+      this.errorMessage = 'No active session. Please login again.';
+      setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+      return;
+    }
+
+    if (!this.email) {
+      alert('Error: Email is required to view metadata.');
+      return;
+    }
+
+    console.log('📋 Fetching metadata for:', file.original_filename);
+    console.log('   File ID:', file.file_id);
+
+    // Call metadata API
+    this.apiService.getMetadata(sessionToken, this.email, file.file_id).subscribe({
+      next: (metadata) => {
+        console.log('✅ Metadata retrieved:', metadata);
+
+        // Format metadata for display
+        const metadataDisplay = `
+File Metadata
+═══════════════════════════════════════
+
+📁 Original Filename: ${metadata.original_filename}
+📦 Original Size: ${this.formatFileSize(metadata.original_size)}
+🔐 Encrypted Size: ${this.formatFileSize(metadata.encrypted_size)}
+🔒 Algorithm: ${metadata.algorithm}
+📋 Version: ${metadata.version}
+✓ Status: ${metadata.verification_status}
+📅 Timestamp: ${this.formatDate(metadata.timestamp)}
+🔑 KEK Length: ${metadata.kek ? metadata.kek.length : 0} characters
+
+File ID: ${metadata.file_id}
+        `.trim();
+
+        alert(metadataDisplay);
+      },
+      error: (err) => {
+        console.error('❌ Error fetching metadata:', err);
+        let errorMsg = 'Failed to fetch metadata';
+
+        if (err.status === 401) {
+          errorMsg = 'Session expired. Please login again.';
+          sessionStorage.clear();
+          setTimeout(() => this.router.navigate(['/passphrase']), 2000);
+        } else if (err.status === 404) {
+          errorMsg = 'Metadata not found for this file';
+        } else if (err.error?.error) {
+          errorMsg = err.error.error;
+        } else if (err.message) {
+          errorMsg += ': ' + err.message;
+        }
+
+        alert(errorMsg);
+      }
+    });
+  }
+
   goBack() {
     this.router.navigate(['/upload']);
   }
