@@ -16,6 +16,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -29,6 +31,8 @@ import java.nio.file.Paths;
 @Path("/api/decrypt")
 @Tag(name = "Decrypt API", description = "File decryption and download endpoints")
 public class DecryptResource {
+
+    private static final Logger log = LoggerFactory.getLogger(DecryptResource.class);
 
     @Inject
     S3Client s3;
