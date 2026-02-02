@@ -180,4 +180,47 @@ public class DecryptResource {
             // Don't throw exception - local save is optional
         }
     }
+
+    @GET
+    @Path("/metadata")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response obtainMetadata(@QueryParam("email") String email, @QueryParam("uuid") String uuid ) {
+
+        try
+        {
+            String metadataKey = "uploads/" + email + "/" + uuid + "/metadata.json";
+            System.out.println("Fetching metadata from: " + metadataKey);
+            // download from s3
+            GetObjectRequest metadataRequest = GetObjectRequest.builder()
+                    .bucket(s3StorageService.getBucketName())
+                    .key(metadataKey)
+                    .build();
+
+            EnvelopeMetadata metadata;
+
+            try (ResponseInputStream<GetObjectResponse> metadataStream = s3.getObject(metadataRequest)) {
+                metadata = objectMapper.readValue(metadataStream, EnvelopeMetadata.class);
+                System.out.println("✓ Metadata retrieved");
+                System.out.println("  Original filename: " + metadata.originalFilename);
+
+                return Response.ok(metadata)
+                        .type(MediaType.APPLICATION_JSON)
+                        .build();
+            }
+
+
+        }
+        catch (Exception e)
+        {
+            System.err.println("✗ Metadata retrieval error: " + e.getMessage());
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Metadata retrieval failed: " + e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+
+
+
+    }
 }
