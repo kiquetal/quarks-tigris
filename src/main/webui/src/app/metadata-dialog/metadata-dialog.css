@@ -239,6 +239,24 @@
   font-size: 16px;
 }
 
+.value-detail {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.value.error {
+  color: #f5576c;
+  font-weight: 700;
+}
+
+.warning-icon {
+  margin-left: 8px;
+  font-size: 16px;
+}
+
 .value.badge {
   display: inline-block;
   background: rgba(102, 126, 234, 0.2);

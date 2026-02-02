@@ -124,6 +124,23 @@ public class FileUploadResource {
                         String encryptedDek = cryptoService.createEnvelopeDek(dekResult.dek);
                         logger.debug("Envelope created: DEK encrypted with master key");
 
+                        // Log size comparison
+                        logger.info("📊 Size Comparison:");
+                        logger.info("   Original size:  {} bytes", decryptResult.size);
+                        logger.info("   Encrypted size: {} bytes", dekResult.encryptedSize);
+                        logger.info("   Overhead:       {} bytes (IV: 12, GCM Tag: 16)",
+                                    dekResult.encryptedSize - decryptResult.size);
+
+                        // Verify sizes are different
+                        if (dekResult.encryptedSize == decryptResult.size) {
+                            logger.warn("⚠️  WARNING: Encrypted size equals original size! This should not happen with AES-GCM.");
+                        } else if (dekResult.encryptedSize < decryptResult.size) {
+                            logger.error("❌ ERROR: Encrypted size is LESS than original size! This is impossible!");
+                        } else {
+                            logger.info("✓ Encryption overhead confirmed: {} bytes added",
+                                       dekResult.encryptedSize - decryptResult.size);
+                        }
+
                         // Clear the plaintext DEK from memory
                         Arrays.fill(dekResult.dek, (byte) 0);
 

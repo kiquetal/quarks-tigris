@@ -73,10 +73,20 @@
           <div class="metadata-item">
             <label>Original Size:</label>
             <span class="value highlight">{{ formatFileSize(metadata.original_size) }}</span>
+            <span class="value-detail">{{ metadata.original_size }} bytes</span>
           </div>
           <div class="metadata-item">
             <label>Encrypted Size:</label>
             <span class="value highlight">{{ formatFileSize(metadata.encrypted_size) }}</span>
+            <span class="value-detail">{{ metadata.encrypted_size }} bytes</span>
+          </div>
+          <div class="metadata-item">
+            <label>Encryption Overhead:</label>
+            <span class="value" [class.error]="metadata.encrypted_size <= metadata.original_size">
+              {{ metadata.encrypted_size - metadata.original_size }} bytes
+              <span *ngIf="metadata.encrypted_size <= metadata.original_size" class="warning-icon">⚠️</span>
+            </span>
+            <span class="value-detail">Expected: ~28 bytes (IV: 12, GCM Tag: 16)</span>
           </div>
         </div>
       </div>
