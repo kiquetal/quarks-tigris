@@ -182,3 +182,11 @@
     </div>
   </div>
 </div>
+
+<!-- Metadata Dialog -->
+<app-metadata-dialog
+  [metadata]="metadataDialogData"
+  [isVisible]="showMetadataDialog"
+  (close)="closeMetadataDialog()">
+</app-metadata-dialog>
+

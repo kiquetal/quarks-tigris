@@ -227,24 +227,9 @@ export class FileList implements OnInit {
       next: (metadata) => {
         console.log('✅ Metadata retrieved:', metadata);
 
-        // Format metadata for display
-        const metadataDisplay = `
-File Metadata
-═══════════════════════════════════════
-
-📁 Original Filename: ${metadata.original_filename}
-📦 Original Size: ${this.formatFileSize(metadata.original_size)}
-🔐 Encrypted Size: ${this.formatFileSize(metadata.encrypted_size)}
-🔒 Algorithm: ${metadata.algorithm}
-📋 Version: ${metadata.version}
-✓ Status: ${metadata.verification_status}
-📅 Timestamp: ${this.formatDate(metadata.timestamp)}
-🔑 KEK Length: ${metadata.kek ? metadata.kek.length : 0} characters
-
-File ID: ${metadata.file_id}
-        `.trim();
-
-        alert(metadataDisplay);
+        // Show dialog with metadata
+        this.metadataDialogData = metadata;
+        this.showMetadataDialog = true;
       },
       error: (err) => {
         console.error('❌ Error fetching metadata:', err);
@@ -265,6 +250,11 @@ File ID: ${metadata.file_id}
         alert(errorMsg);
       }
     });
+  }
+
+  closeMetadataDialog() {
+    this.showMetadataDialog = false;
+    this.metadataDialogData = null;
   }
 
   goBack() {
