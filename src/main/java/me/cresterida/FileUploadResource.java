@@ -87,10 +87,7 @@ public class FileUploadResource {
         }
 
         // Log file info
-        logger.info("=".repeat(80));
-        logger.info("Uploading encrypted file: {} ({} bytes)", file.fileName(), file.size());
-        logger.info("Email: {}", email);
-        logger.info("=".repeat(80));
+        logger.info("Uploading file: {} ({} bytes) for {}", file.fileName(), file.size(), email);
 
         try {
             // Generate S3 keys first
@@ -109,7 +106,6 @@ public class FileUploadResource {
                         cryptoService.verifyAndDecryptStreaming(encryptedInput, decryptedOutput, email);
 
                     logger.info("Decryption verification: {}", decryptResult.verified ? "SUCCESS" : "FAILED");
-                    logger.debug("Decrypted size: {} bytes", decryptResult.size);
 
                     // Step 2: Encrypt the decrypted data using DEK (streaming)
                     try (FileInputStream decryptedInput = new FileInputStream(tempDecrypted.toFile());
@@ -118,28 +114,10 @@ public class FileUploadResource {
                         CryptoService.StreamingDataEncryptionResult dekResult =
                             cryptoService.encryptWithDekStreaming(decryptedInput, dekEncryptedOutput);
 
-                        logger.debug("DEK encrypted size: {} bytes", dekResult.encryptedSize);
-
                         // Step 3: Create envelope by encrypting the DEK with master key
                         String encryptedDek = cryptoService.createEnvelopeDek(dekResult.dek);
                         logger.debug("Envelope created: DEK encrypted with master key");
 
-                        // Log size comparison
-                        logger.info("📊 Size Comparison:");
-                        logger.info("   Original size:  {} bytes", decryptResult.size);
-                        logger.info("   Encrypted size: {} bytes", dekResult.encryptedSize);
-                        logger.info("   Overhead:       {} bytes (IV: 12, GCM Tag: 16)",
-                                    dekResult.encryptedSize - decryptResult.size);
-
-                        // Verify sizes are different
-                        if (dekResult.encryptedSize == decryptResult.size) {
-                            logger.warn("⚠️  WARNING: Encrypted size equals original size! This should not happen with AES-GCM.");
-                        } else if (dekResult.encryptedSize < decryptResult.size) {
-                            logger.error("❌ ERROR: Encrypted size is LESS than original size! This is impossible!");
-                        } else {
-                            logger.info("✓ Encryption overhead confirmed: {} bytes added",
-                                       dekResult.encryptedSize - decryptResult.size);
-                        }
 
                         // Clear the plaintext DEK from memory
                         Arrays.fill(dekResult.dek, (byte) 0);
@@ -174,8 +152,8 @@ public class FileUploadResource {
                         // Publish event to NATS for downstream processing
                         publishToNats(email, fileId, uploadResult);
 
-
-                        logger.info("=".repeat(80));
+                        logger.info("File uploaded successfully: {} (original: {} bytes, encrypted: {} bytes)",
+                                    file.fileName(), decryptResult.size, dekResult.encryptedSize);
 
                         return Response.ok(new UploadResponse(
                             "File uploaded successfully with envelope encryption",
