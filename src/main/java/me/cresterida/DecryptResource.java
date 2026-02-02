@@ -78,16 +78,16 @@ public class DecryptResource {
                     .build();
         }
 
-        System.out.println("=".repeat(80));
-        System.out.println("Decrypting file for email: " + email + ", UUID: " + uuid);
-        System.out.println("=".repeat(80));
+        log.info("=".repeat(80));
+        log.info("Decrypting file for email: {}, UUID: {}", email, uuid);
+        log.info("=".repeat(80));
 
         try {
             // Step 1: Construct metadata key - it's always at the same location
             // Pattern: uploads/{email}/{uuid}/metadata.json
             String metadataKey = "uploads/" + email + "/" + uuid + "/metadata.json";
 
-            System.out.println("Fetching metadata from: " + metadataKey);
+            log.info("Fetching metadata from: {}", metadataKey);
 
             // Step 2: Download metadata from S3
             GetObjectRequest metadataRequest = GetObjectRequest.builder()
@@ -98,9 +98,9 @@ public class DecryptResource {
             EnvelopeMetadata metadata;
             try (ResponseInputStream<GetObjectResponse> metadataStream = s3.getObject(metadataRequest)) {
                 metadata = objectMapper.readValue(metadataStream, EnvelopeMetadata.class);
-                System.out.println("✓ Metadata retrieved");
-                System.out.println("  Original filename: " + metadata.originalFilename);
-                System.out.println("  Original size: " + metadata.originalSize + " bytes");
+                log.info("✓ Metadata retrieved");
+                log.info("  Original filename: {}", metadata.originalFilename);
+                log.info("  Original size: {} bytes", metadata.originalSize);
             }
 
             // Step 3: Construct the actual data key using the original filename from metadata
@@ -108,7 +108,7 @@ public class DecryptResource {
             String baseFilename = metadata.originalFilename.replace(".encrypted", "");
             String dataKey = "uploads/" + email + "/" + uuid + "/" + baseFilename + ".enc";
 
-            System.out.println("Fetching encrypted data from: " + dataKey);
+            log.info("Fetching encrypted data from: {}", dataKey);
 
             // Step 4: Download encrypted file from S3
             GetObjectRequest dataRequest = GetObjectRequest.builder()
@@ -119,13 +119,13 @@ public class DecryptResource {
             byte[] encryptedData;
             try (ResponseInputStream<GetObjectResponse> dataStream = s3.getObject(dataRequest)) {
                 encryptedData = dataStream.readAllBytes();
-                System.out.println("✓ Encrypted data retrieved: " + encryptedData.length + " bytes");
+                log.info("✓ Encrypted data retrieved: {} bytes", encryptedData.length);
             }
 
             // Step 5: Decrypt the data
-            System.out.println("Decrypting with envelope KEK...");
+            log.info("Decrypting with envelope KEK...");
             byte[] decryptedData = cryptoService.decryptWithKek(encryptedData, metadata.kek);
-            System.out.println("✓ Decryption successful! Size: " + decryptedData.length + " bytes");
+            log.info("✓ Decryption successful! Size: {} bytes", decryptedData.length);
 
             // Step 6: In dev mode, save to local folder
             if ("dev".equals(profile)) {
@@ -140,7 +140,7 @@ public class DecryptResource {
                 output.flush();
             };
 
-            System.out.println("=".repeat(80));
+            log.info("=".repeat(80));
             return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + cleanFilename + "\"")
                     .header("Content-Type", "application/octet-stream")
@@ -148,14 +148,13 @@ public class DecryptResource {
                     .build();
 
         } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
-            System.err.println("✗ File not found in S3: " + e.getMessage());
+            log.error("✗ File not found in S3: {}", e.getMessage());
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("File not found: " + e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (Exception e) {
-            System.err.println("✗ Decryption error: " + e.getMessage());
-            e.printStackTrace();
+            log.error("✗ Decryption error: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Decryption failed: " + e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
@@ -178,9 +177,9 @@ public class DecryptResource {
 
             Files.write(filePath, data);
 
-            System.out.println("✓ File saved locally: " + filePath.toAbsolutePath());
+            log.info("✓ File saved locally: {}", filePath.toAbsolutePath());
         } catch (IOException e) {
-            System.err.println("⚠ Warning: Failed to save file locally: " + e.getMessage());
+            log.warn("⚠ Warning: Failed to save file locally: {}", e.getMessage());
             // Don't throw exception - local save is optional
         }
     }
@@ -211,13 +210,13 @@ public class DecryptResource {
                     .build();
         }
 
-        System.out.println("=".repeat(80));
-        System.out.println("Fetching metadata for email: " + email + ", UUID: " + uuid);
-        System.out.println("=".repeat(80));
+        log.info("=".repeat(80));
+        log.info("Fetching metadata for email: {}, UUID: {}", email, uuid);
+        log.info("=".repeat(80));
 
         try {
             String metadataKey = "uploads/" + email + "/" + uuid + "/metadata.json";
-            System.out.println("Fetching metadata from: " + metadataKey);
+            log.info("Fetching metadata from: {}", metadataKey);
 
             // Download metadata from S3
             GetObjectRequest metadataRequest = GetObjectRequest.builder()
@@ -229,10 +228,10 @@ public class DecryptResource {
 
             try (ResponseInputStream<GetObjectResponse> metadataStream = s3.getObject(metadataRequest)) {
                 metadata = objectMapper.readValue(metadataStream, EnvelopeMetadata.class);
-                System.out.println("✓ Metadata retrieved");
-                System.out.println("  Original filename: " + metadata.originalFilename);
-                System.out.println("  Original size: " + metadata.originalSize + " bytes");
-                System.out.println("=".repeat(80));
+                log.info("✓ Metadata retrieved");
+                log.info("  Original filename: {}", metadata.originalFilename);
+                log.info("  Original size: {} bytes", metadata.originalSize);
+                log.info("=".repeat(80));
 
                 return Response.ok(metadata)
                         .type(MediaType.APPLICATION_JSON)
@@ -240,14 +239,13 @@ public class DecryptResource {
             }
 
         } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
-            System.err.println("✗ Metadata not found in S3: " + e.getMessage());
+            log.error("✗ Metadata not found in S3: {}", e.getMessage());
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("Metadata not found: " + e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (Exception e) {
-            System.err.println("✗ Metadata retrieval error: " + e.getMessage());
-            e.printStackTrace();
+            log.error("✗ Metadata retrieval error: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Metadata retrieval failed: " + e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
