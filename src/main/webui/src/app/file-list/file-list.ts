@@ -227,9 +227,17 @@ export class FileList implements OnInit {
       next: (metadata) => {
         console.log('✅ Metadata retrieved:', metadata);
 
-        // Show dialog with metadata
-        this.metadataDialogData = metadata;
-        this.showMetadataDialog = true;
+        // Use NgZone to ensure change detection picks up the changes
+        this.ngZone.run(() => {
+          // Set metadata first, then show dialog
+          this.metadataDialogData = metadata;
+          this.showMetadataDialog = true;
+
+          // Force change detection
+          this.cdr.detectChanges();
+
+          console.log('Dialog state set - visible:', this.showMetadataDialog, 'data:', !!this.metadataDialogData);
+        });
       },
       error: (err) => {
         console.error('❌ Error fetching metadata:', err);
@@ -253,8 +261,12 @@ export class FileList implements OnInit {
   }
 
   closeMetadataDialog() {
-    this.showMetadataDialog = false;
-    this.metadataDialogData = null;
+    this.ngZone.run(() => {
+      this.showMetadataDialog = false;
+      this.metadataDialogData = null;
+      this.cdr.detectChanges();
+      console.log('Dialog closed');
+    });
   }
 
   goBack() {
